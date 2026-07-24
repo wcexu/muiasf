@@ -2,174 +2,120 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Username Market</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        /* ===== ОБЩИЕ СТИЛИ ===== */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --primary: #0f3460;
+            --accent: #e94560;
+            --success: #00d2ff;
+            --text: #ffffff;
+            --text-secondary: #a0aec0;
+            --border: #2d3748;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: #0a0a1a;
-            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-color);
+            color: var(--text);
             min-height: 100vh;
-            overflow-x: hidden;
+            padding: 16px;
             padding-bottom: 80px;
         }
 
-        /* ===== СКРОЛЛБАР ===== */
-        ::-webkit-scrollbar {
-            width: 4px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #1a1a2e;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #6c5ce7;
-            border-radius: 10px;
+        body.tg-theme {
+            --bg-color: var(--tg-theme-bg-color, #1a1a2e);
+            --card-bg: var(--tg-theme-secondary-bg-color, #16213e);
+            --text: var(--tg-theme-text-color, #ffffff);
+            --text-secondary: var(--tg-theme-hint-color, #a0aec0);
+            --border: var(--tg-theme-section-border-color, #2d3748);
         }
 
-        /* ===== ЗАГРУЗЧИК ===== */
-        .loader-wrapper {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: #0a0a1a;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease, visibility 0.5s ease;
-        }
-
-        .loader-wrapper.hidden {
-            opacity: 0;
-            visibility: hidden;
-        }
-
-        .loader {
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(108, 92, 231, 0.2);
-            border-top-color: #6c5ce7;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* ===== ХЕДЕР ===== */
         .header {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            padding: 16px 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            border-bottom: 1px solid rgba(108, 92, 231, 0.2);
-            backdrop-filter: blur(12px);
+            padding: 12px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
         }
 
         .header-title {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 700;
-            background: linear-gradient(90deg, #6c5ce7, #a29bfe);
+            background: linear-gradient(135deg, var(--accent), var(--success));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
         .header-balance {
-            background: rgba(108, 92, 231, 0.15);
-            padding: 6px 14px;
+            background: var(--card-bg);
+            padding: 6px 16px;
             border-radius: 20px;
             font-size: 14px;
             font-weight: 600;
-            color: #a29bfe;
-            border: 1px solid rgba(108, 92, 231, 0.2);
+            border: 1px solid var(--border);
+            cursor: pointer;
         }
 
         .header-balance span {
-            color: #ffd93d;
+            color: var(--success);
         }
 
-        /* ===== ВКЛАДКИ (TABS) ===== */
-        .tabs {
-            display: flex;
-            background: #1a1a2e;
-            padding: 4px;
-            margin: 12px 16px;
-            border-radius: 14px;
-            overflow: hidden;
-            border: 1px solid rgba(108, 92, 231, 0.1);
+        .nav {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
         }
 
-        .tab {
-            flex: 1;
-            padding: 10px;
-            text-align: center;
+        .nav-btn {
+            background: var(--card-bg);
             border: none;
-            background: transparent;
-            color: #6c6c8a;
-            font-size: 13px;
-            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 12px 4px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
             cursor: pointer;
-            border-radius: 10px;
-            transition: all 0.3s ease;
+            transition: all 0.3s;
+            text-align: center;
+            border: 1px solid transparent;
         }
 
-        .tab.active {
-            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
-            color: #fff;
-            box-shadow: 0 4px 20px rgba(108, 92, 231, 0.3);
-        }
-
-        .tab:hover:not(.active) {
-            color: #fff;
-        }
-
-        /* ===== КОНТЕНТ ===== */
-        .content {
-            padding: 0 16px 16px;
-        }
-
-        .page {
-            display: none;
-            animation: fadeUp 0.3s ease;
-        }
-
-        .page.active {
+        .nav-btn .icon {
+            font-size: 20px;
             display: block;
+            margin-bottom: 4px;
         }
 
-        @keyframes fadeUp {
-            from {
-                opacity: 0;
-                transform: translateY(16px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .nav-btn.active {
+            color: var(--text);
+            border-color: var(--accent);
+            background: var(--primary);
         }
 
-        /* ===== КАРТОЧКИ ===== */
+        .nav-btn:active {
+            transform: scale(0.95);
+        }
+
         .card {
-            background: #1a1a2e;
-            border-radius: 14px;
+            background: var(--card-bg);
+            border-radius: 16px;
             padding: 16px;
             margin-bottom: 12px;
-            border: 1px solid rgba(108, 92, 231, 0.08);
-            transition: all 0.3s ease;
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+            cursor: pointer;
         }
 
         .card:active {
@@ -182,19 +128,19 @@
             margin-bottom: 4px;
         }
 
-        .card-username {
-            color: #6c6c8a;
+        .card-subtitle {
             font-size: 13px;
+            color: var(--text-secondary);
             margin-bottom: 8px;
         }
 
         .card-price {
             font-size: 18px;
             font-weight: 700;
-            color: #ffd93d;
+            color: var(--success);
         }
 
-        .card-status {
+        .card-badge {
             display: inline-block;
             padding: 2px 10px;
             border-radius: 12px;
@@ -203,1001 +149,1632 @@
             margin-top: 6px;
         }
 
-        .card-status.active {
-            background: rgba(0, 230, 118, 0.15);
-            color: #00e676;
+        .badge-auction {
+            background: #ffd70033;
+            color: #ffd700;
         }
 
-        .card-status.sold {
-            background: rgba(255, 107, 107, 0.15);
-            color: #ff6b6b;
+        .badge-fixed {
+            background: #00d2ff33;
+            color: #00d2ff;
         }
 
-        .card-status.waiting {
-            background: rgba(255, 217, 61, 0.15);
-            color: #ffd93d;
-        }
-
-        .card-status.completed {
-            background: rgba(0, 230, 118, 0.15);
-            color: #00e676;
-        }
-
-        .card-status.cancelled {
-            background: rgba(255, 107, 107, 0.15);
-            color: #ff6b6b;
-        }
-
-        .card-bid {
-            font-size: 13px;
-            color: #6c6c8a;
-            margin-top: 4px;
-        }
-
-        .card-bid span {
-            color: #a29bfe;
-            font-weight: 600;
-        }
-
-        .card-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 12px;
-            flex-wrap: wrap;
-        }
-
-        /* ===== КНОПКИ ===== */
         .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             padding: 10px 20px;
             border: none;
             border-radius: 12px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
-            flex: 1;
-            min-width: 80px;
-            text-align: center;
+            transition: all 0.3s;
+            width: 100%;
+            gap: 8px;
         }
 
         .btn:active {
-            transform: scale(0.95);
+            transform: scale(0.96);
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
-            color: #fff;
-            box-shadow: 0 4px 20px rgba(108, 92, 231, 0.25);
-        }
-
-        .btn-primary:hover {
-            box-shadow: 0 4px 30px rgba(108, 92, 231, 0.4);
-        }
-
-        .btn-primary:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+            background: var(--accent);
+            color: white;
         }
 
         .btn-success {
-            background: linear-gradient(135deg, #00b894, #00cec9);
-            color: #fff;
-            box-shadow: 0 4px 20px rgba(0, 184, 148, 0.25);
+            background: var(--success);
+            color: #1a1a2e;
         }
 
-        .btn-danger {
-            background: linear-gradient(135deg, #e17055, #d63031);
-            color: #fff;
+        .btn-secondary {
+            background: var(--primary);
+            color: white;
         }
 
         .btn-outline {
             background: transparent;
-            color: #6c6c8a;
-            border: 1px solid #2d2d44;
+            border: 1px solid var(--border);
+            color: var(--text);
         }
 
-        .btn-outline:hover {
-            border-color: #6c5ce7;
-            color: #fff;
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
         }
 
         .btn-sm {
             padding: 6px 14px;
             font-size: 12px;
-            flex: 0 0 auto;
+            width: auto;
         }
 
-        .btn-full {
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            color: var(--text-secondary);
+        }
+
+        .form-input,
+        .form-select {
             width: 100%;
-            flex: 1 1 100%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-color);
+            color: var(--text);
+            font-size: 14px;
+            transition: border-color 0.3s;
         }
 
-        /* ===== МОДАЛЬНОЕ ОКНО ===== */
+        .form-input:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a0aec0' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .profile-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin: 0 auto 12px;
+            border: 2px solid var(--accent);
+        }
+
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 8px;
+            background: var(--bg-color);
+            border-radius: 10px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
         .modal-overlay {
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
             background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(8px);
-            display: none;
-            align-items: center;
-            justify-content: center;
+            backdrop-filter: blur(4px);
             z-index: 1000;
-            padding: 20px;
+            align-items: flex-end;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
         }
 
-        .modal-overlay.show {
+        .modal-overlay.active {
             display: flex;
         }
 
         .modal {
-            background: #1a1a2e;
-            border-radius: 20px;
-            padding: 24px;
-            max-width: 400px;
+            background: var(--card-bg);
+            border-radius: 20px 20px 0 0;
+            padding: 20px;
             width: 100%;
+            max-width: 500px;
             max-height: 80vh;
             overflow-y: auto;
-            border: 1px solid rgba(108, 92, 231, 0.15);
-            animation: modalSlide 0.3s ease;
+            animation: slideUp 0.3s ease;
         }
 
-        @keyframes modalSlide {
+        @keyframes slideUp {
             from {
-                transform: translateY(40px);
-                opacity: 0;
+                transform: translateY(100%);
             }
             to {
                 transform: translateY(0);
-                opacity: 1;
             }
         }
 
-        .modal-title {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-
-        .modal-text {
-            color: #6c6c8a;
-            font-size: 14px;
-            text-align: center;
-            margin-bottom: 16px;
-        }
-
-        .modal-input {
-            width: 100%;
-            padding: 12px 16px;
-            border-radius: 12px;
-            border: 1px solid #2d2d44;
-            background: #0a0a1a;
-            color: #fff;
-            font-size: 16px;
-            margin-bottom: 12px;
-            outline: none;
-            transition: border-color 0.3s;
-        }
-
-        .modal-input:focus {
-            border-color: #6c5ce7;
-        }
-
-        .modal-input::placeholder {
-            color: #6c6c8a;
-        }
-
-        .modal-actions {
+        .modal-header {
             display: flex;
-            gap: 10px;
-            margin-top: 8px;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
         }
 
-        .modal-actions .btn {
-            flex: 1;
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0 8px;
         }
 
-        /* ===== БЕЙДЖИ ===== */
-        .badge {
+        .loading {
+            text-align: center;
+            padding: 40px 0;
+            color: var(--text-secondary);
+        }
+
+        .loading .spinner {
             display: inline-block;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 12px;
         }
 
-        .badge-auction {
-            background: rgba(255, 217, 61, 0.15);
-            color: #ffd93d;
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
         }
 
-        .badge-fixed {
-            background: rgba(0, 230, 118, 0.15);
-            color: #00e676;
-        }
-
-        /* ===== ТОСТ УВЕДОМЛЕНИЕ ===== */
         .toast {
             position: fixed;
-            top: 20px;
+            bottom: 80px;
             left: 50%;
             transform: translateX(-50%);
-            background: #1a1a2e;
-            color: #fff;
             padding: 12px 24px;
-            border-radius: 14px;
-            border: 1px solid rgba(108, 92, 231, 0.2);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-            z-index: 9999;
+            border-radius: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 2000;
             display: none;
             max-width: 90%;
             text-align: center;
-            font-size: 14px;
-            font-weight: 500;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
 
         .toast.show {
             display: block;
-            animation: toastSlide 0.3s ease;
+            animation: fadeIn 0.3s ease;
         }
 
         .toast.success {
-            border-color: #00e676;
-            background: rgba(0, 230, 118, 0.08);
+            border-color: var(--success);
         }
 
         .toast.error {
-            border-color: #ff6b6b;
-            background: rgba(255, 107, 107, 0.08);
+            border-color: var(--accent);
         }
 
-        @keyframes toastSlide {
-            from {
-                transform: translateX(-50%) translateY(-20px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(-50%) translateY(0);
-                opacity: 1;
-            }
-        }
-
-        /* ===== ПАГИНАЦИЯ ===== */
-        .pagination {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-            margin-top: 16px;
-            flex-wrap: wrap;
-        }
-
-        .pagination .btn {
-            flex: 0 0 auto;
-            padding: 8px 16px;
-            min-width: auto;
-        }
-
-        /* ===== ПРОФИЛЬ ===== */
-        .profile-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin: 12px 0;
-        }
-
-        .profile-stat {
-            background: #0a0a1a;
-            padding: 12px;
-            border-radius: 12px;
-            text-align: center;
-        }
-
-        .profile-stat-value {
-            font-size: 22px;
-            font-weight: 700;
-            color: #ffd93d;
-        }
-
-        .profile-stat-label {
-            font-size: 11px;
-            color: #6c6c8a;
-            margin-top: 2px;
-        }
-
-        /* ===== ПУСТОЕ СОСТОЯНИЕ ===== */
         .empty-state {
             text-align: center;
             padding: 40px 20px;
+            color: var(--text-secondary);
         }
 
-        .empty-state-icon {
+        .empty-state .empty-icon {
             font-size: 48px;
             margin-bottom: 12px;
+            opacity: 0.5;
         }
 
-        .empty-state-text {
-            color: #6c6c8a;
+        .admin-section {
+            margin-top: 12px;
+        }
+
+        .admin-section-title {
             font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        /* ===== ОТВЕТСТВЕННОСТЬ ===== */
-        @media (max-width: 480px) {
-            .header-title {
-                font-size: 15px;
+        .request-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .request-item:last-child {
+            border-bottom: none;
+        }
+
+        .request-info {
+            flex: 1;
+        }
+
+        .request-amount {
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .request-user {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .channel-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+        }
+
+        .channel-item:last-child {
+            border-bottom: none;
+        }
+
+        .channel-info {
+            flex: 1;
+        }
+
+        .channel-name {
+            font-weight: 600;
+        }
+
+        .channel-username {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .channel-meta {
+            text-align: right;
+        }
+
+        .status-badge {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+
+        .status-active {
+            background: #00d2ff33;
+            color: #00d2ff;
+        }
+
+        .status-waiting {
+            background: #ffd70033;
+            color: #ffd700;
+        }
+
+        .status-sold {
+            background: #ff6b6b33;
+            color: #ff6b6b;
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 12px 0;
+        }
+
+        @media (max-width: 400px) {
+            .nav {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 4px;
             }
-            .header-balance {
-                font-size: 12px;
-                padding: 4px 12px;
+            .nav-btn {
+                font-size: 10px;
+                padding: 8px 2px;
             }
-            .card-price {
-                font-size: 16px;
-            }
-            .modal {
-                padding: 18px;
-            }
-            .btn {
-                font-size: 13px;
-                padding: 8px 16px;
+            .nav-btn .icon {
+                font-size: 18px;
             }
         }
     </style>
 </head>
 <body>
+    <div id="toast" class="toast"></div>
 
-    <!-- ЗАГРУЗЧИК -->
-    <div class="loader-wrapper" id="loader">
-        <div class="loader"></div>
+    <div class="header">
+        <div class="header-title">🎯 Username Market</div>
+        <div class="header-balance" onclick="refreshBalance()">⭐ <span id="balanceDisplay">0</span></div>
     </div>
 
-    <!-- ТОСТ -->
-    <div class="toast" id="toast"></div>
-
-    <!-- ХЕДЕР -->
-    <header class="header">
-        <span class="header-title">✨ Username Market</span>
-        <div class="header-balance">
-            ⭐ <span id="balanceDisplay">0</span>
-        </div>
-    </header>
-
-    <!-- ВКЛАДКИ -->
-    <div class="tabs">
-        <button class="tab active" data-tab="buy">🛒 Купить</button>
-        <button class="tab" data-tab="auction">🔨 Аукцион</button>
-        <button class="tab" data-tab="my">📦 Мои</button>
-        <button class="tab" data-tab="profile">👤 Профиль</button>
+    <div class="nav">
+        <button class="nav-btn active" data-page="market" id="navMarket">
+            <span class="icon">🏪</span> Маркет
+        </button>
+        <button class="nav-btn" data-page="auctions" id="navAuctions">
+            <span class="icon">🔨</span> Аукционы
+        </button>
+        <button class="nav-btn" data-page="profile" id="navProfile">
+            <span class="icon">👤</span> Профиль
+        </button>
+        <button class="nav-btn" data-page="admin" id="navAdmin" style="display:none;">
+            <span class="icon">⚙️</span> Админ
+        </button>
     </div>
 
-    <!-- КОНТЕНТ -->
-    <div class="content" id="content">
-
-        <!-- СТРАНИЦА: КУПИТЬ -->
-        <div class="page active" id="page-buy">
-            <div id="buyList"></div>
-        </div>
-
-        <!-- СТРАНИЦА: АУКЦИОН -->
-        <div class="page" id="page-auction">
-            <div id="auctionList"></div>
-        </div>
-
-        <!-- СТРАНИЦА: МОИ -->
-        <div class="page" id="page-my">
-            <div id="myChannels"></div>
-        </div>
-
-        <!-- СТРАНИЦА: ПРОФИЛЬ -->
-        <div class="page" id="page-profile">
-            <div id="profileContent"></div>
-        </div>
-    </div>
-
-    <!-- МОДАЛЬНОЕ ОКНО -->
-    <div class="modal-overlay" id="modal">
-        <div class="modal">
-            <div class="modal-title" id="modalTitle">Действие</div>
-            <div class="modal-text" id="modalText"></div>
-            <input class="modal-input" id="modalInput" type="number" placeholder="Введите сумму..." style="display:none;">
-            <div class="modal-actions" id="modalActions">
-                <button class="btn btn-outline" onclick="closeModal()">Отмена</button>
-                <button class="btn btn-primary" id="modalConfirmBtn">Подтвердить</button>
+    <div id="pageMarket" class="page active">
+        <div id="marketContent">
+            <div class="loading">
+                <div class="spinner"></div>
+                <div>Загрузка каналов...</div>
             </div>
+        </div>
+    </div>
+
+    <div id="pageAuctions" class="page">
+        <div id="auctionsContent">
+            <div class="loading">
+                <div class="spinner"></div>
+                <div>Загрузка аукционов...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="pageProfile" class="page">
+        <div id="profileContent">
+            <div class="loading">
+                <div class="spinner"></div>
+                <div>Загрузка профиля...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="pageAdmin" class="page">
+        <div id="adminContent">
+            <div class="loading">
+                <div class="spinner"></div>
+                <div>Загрузка админ-панели...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalOverlay" class="modal-overlay">
+        <div class="modal" id="modalContent">
+            <div class="modal-header">
+                <h3 id="modalTitle">Действие</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div id="modalBody"></div>
         </div>
     </div>
 
     <script>
         // ============================================================
-        // ПЕРЕМЕННЫЕ
+        // КОНФИГУРАЦИЯ
         // ============================================================
-
-        let USER_ID = null;
-        let USER_DATA = null;
-        let currentPage = 0;
-        let currentType = 'all';
-        let totalPages = 0;
-        let isLoading = false;
-
-        const API_BASE = window.location.origin;
+        const CONFIG = {
+            API_URL: 'http://localhost:8000/api',
+            MIN_SELL_PRICE: 5,
+            MIN_WITHDRAW: 50,
+            MAX_WITHDRAW: 1000000,
+            MIN_AUCTION_BID: 1
+        };
 
         // ============================================================
-        // ИНИЦИАЛИЗАЦИЯ
+        // TELEGRAM
         // ============================================================
+        const tg = window.Telegram.WebApp;
+        tg.expand();
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Получаем user_id из URL
-            const urlParams = new URLSearchParams(window.location.search);
-            USER_ID = urlParams.get('user_id');
+        // ============================================================
+        // STATE
+        // ============================================================
+        let state = {
+            user: null,
+            balance: 0,
+            channels: [],
+            auctions: [],
+            myChannels: [],
+            withdrawRequests: [],
+            currentPage: 'market',
+            adminMode: false
+        };
 
-            if (!USER_ID) {
-                showToast('❌ Ошибка: user_id не найден', 'error');
+        // ============================================================
+        // API КЛИЕНТ
+        // ============================================================
+        const api = {
+            async request(method, endpoint, data = null) {
+                try {
+                    const url = `${CONFIG.API_URL}${endpoint}`;
+                    const options = {
+                        method: method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    };
+
+                    if (data) {
+                        options.body = JSON.stringify(data);
+                    }
+
+                    const response = await fetch(url, options);
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(result.error || 'Ошибка запроса');
+                    }
+
+                    return result;
+                } catch (error) {
+                    console.error('API Error:', error);
+                    throw error;
+                }
+            },
+
+            async getChannels() {
+                const result = await this.request('GET', '/channels');
+                return result.data || [];
+            },
+
+            async getAuctions() {
+                const result = await this.request('GET', '/auctions');
+                return result.data || [];
+            },
+
+            async getUser(userId) {
+                const result = await this.request('GET', `/user/${userId}`);
+                return result.data;
+            },
+
+            async getMyChannels(userId) {
+                const result = await this.request('GET', `/user/${userId}/channels`);
+                return result.data || [];
+            },
+
+            async getWithdrawRequests() {
+                const result = await this.request('GET', '/admin/withdraw');
+                return result.data || [];
+            },
+
+            async buyChannel(channelId, userId) {
+                const result = await this.request('POST', `/buy/${channelId}`, { user_id: userId });
+                return result;
+            },
+
+            async placeBid(channelId, userId, amount) {
+                const result = await this.request('POST', `/auction/${channelId}/bid`, {
+                    user_id: userId,
+                    amount: amount
+                });
+                return result;
+            },
+
+            async withdraw(userId, amount) {
+                const result = await this.request('POST', '/withdraw', {
+                    user_id: userId,
+                    amount: amount
+                });
+                return result;
+            },
+
+            async sellChannel(userId, username, title, price, isAuction) {
+                const result = await this.request('POST', '/sell', {
+                    user_id: userId,
+                    username: username,
+                    title: title || username,
+                    price: price,
+                    is_auction: isAuction
+                });
+                return result;
+            },
+
+            async deleteChannel(channelId, userId) {
+                const result = await this.request('DELETE', `/channel/${channelId}`, { user_id: userId });
+                return result;
+            },
+
+            async updateChannelPrice(channelId, userId, price) {
+                const result = await this.request('PUT', `/channel/${channelId}/price`, {
+                    user_id: userId,
+                    price: price
+                });
+                return result;
+            },
+
+            async approveWithdraw(requestId) {
+                const result = await this.request('POST', `/admin/withdraw/${requestId}/approve`);
+                return result;
+            },
+
+            async rejectWithdraw(requestId) {
+                const result = await this.request('POST', `/admin/withdraw/${requestId}/reject`);
+                return result;
+            },
+
+            async giveBalance(userId, amount) {
+                const result = await this.request('POST', '/admin/balance', {
+                    user_id: userId,
+                    amount: amount
+                });
+                return result;
+            },
+
+            async broadcast(message) {
+                const result = await this.request('POST', '/admin/broadcast', { message });
+                return result;
+            },
+
+            async createInvoice(userId, amount) {
+                const result = await this.request('POST', '/invoice', {
+                    user_id: userId,
+                    amount: amount
+                });
+                return result;
+            },
+
+            async createCryptoInvoice(userId, amount, currency) {
+                const result = await this.request('POST', '/crypto/invoice', {
+                    user_id: userId,
+                    amount: amount,
+                    currency: currency
+                });
+                return result;
+            },
+
+            async checkPayment(paymentId) {
+                const result = await this.request('GET', `/payment/${paymentId}`);
+                return result;
+            }
+        };
+
+        // ============================================================
+        // DOM HELPERS
+        // ============================================================
+        function $(id) { return document.getElementById(id); }
+
+        function showToast(msg, type = 'info') {
+            const t = $('toast');
+            t.textContent = msg;
+            t.className = 'toast show ' + type;
+            clearTimeout(t._timeout);
+            t._timeout = setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function openModal(title, html) {
+            $('modalTitle').textContent = title;
+            $('modalBody').innerHTML = html;
+            $('modalOverlay').classList.add('active');
+        }
+
+        function closeModal() {
+            $('modalOverlay').classList.remove('active');
+        }
+
+        function formatTime(ts) {
+            if (!ts) return '—';
+            const d = new Date(ts * 1000);
+            return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function timeRemaining(ts) {
+            const diff = ts - Date.now() / 1000;
+            if (diff <= 0) return 'Завершен';
+            const days = Math.floor(diff / 86400);
+            const hours = Math.floor((diff % 86400) / 3600);
+            const minutes = Math.floor((diff % 3600) / 60);
+            return `${days}д ${hours}ч ${minutes}м`;
+        }
+
+        // ============================================================
+        // RENDER FUNCTIONS
+        // ============================================================
+        async function renderMarket() {
+            const container = $('marketContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>';
+
+            try {
+                const channels = await api.getChannels();
+                state.channels = channels;
+
+                if (!channels || channels.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">📭</div>
+                            <h3>Нет каналов на продаже</h3>
+                            <p style="margin-top:8px;font-size:14px;">Станьте первым продавцом!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                channels.forEach(ch => {
+                    html += `
+                        <div class="card" onclick="viewChannel(${ch.id})">
+                            <div class="card-title">${ch.title || ch.username}</div>
+                            <div class="card-subtitle">@${ch.username}</div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                                <span class="card-price">⭐ ${ch.price}</span>
+                                <span class="card-badge badge-fixed">Фикс</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Render market error:', e);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">❌</div>
+                        <h3>Ошибка загрузки</h3>
+                        <p style="font-size:13px;color:var(--text-secondary);">${e.message}</p>
+                        <button class="btn btn-secondary" style="margin-top:12px;" onclick="renderMarket()">🔄 Повторить</button>
+                    </div>
+                `;
+                showToast('Ошибка загрузки: ' + e.message, 'error');
+            }
+        }
+
+        async function renderAuctions() {
+            const container = $('auctionsContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>';
+
+            try {
+                const auctions = await api.getAuctions();
+                state.auctions = auctions;
+
+                if (!auctions || auctions.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">🔨</div>
+                            <h3>Нет активных аукционов</h3>
+                            <p style="margin-top:8px;font-size:14px;">Создайте аукцион в разделе профиля</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                auctions.forEach(ch => {
+                    const endTime = ch.auction_end_time;
+                    const timeText = endTime ? timeRemaining(endTime) : 'Ожидает ставки';
+                    const currentBid = ch.auction_current_bid || ch.price;
+                    html += `
+                        <div class="card" onclick="viewAuction(${ch.id})">
+                            <div class="card-title">${ch.title || ch.username}</div>
+                            <div class="card-subtitle">@${ch.username}</div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;flex-wrap:wrap;gap:4px;">
+                                <span style="font-size:14px;">💰 Ставка: <strong>${currentBid} ⭐</strong></span>
+                                <span class="card-badge badge-auction">Аукцион</span>
+                            </div>
+                            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
+                                ⏱ ${timeText}
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Render auctions error:', e);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">❌</div>
+                        <h3>Ошибка загрузки</h3>
+                        <p style="font-size:13px;color:var(--text-secondary);">${e.message}</p>
+                    </div>
+                `;
+                showToast('Ошибка загрузки: ' + e.message, 'error');
+            }
+        }
+
+        async function renderProfile() {
+            const container = $('profileContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>';
+
+            try {
+                const userId = tg.initDataUnsafe?.user?.id;
+                if (!userId) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">🔒</div>
+                            <h3>Авторизуйтесь в Telegram</h3>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const user = await api.getUser(userId);
+                state.user = user;
+                state.balance = user?.balance || 0;
+                updateBalanceDisplay();
+
+                const myChannels = await api.getMyChannels(userId);
+                state.myChannels = myChannels;
+
+                let html = `
+                    <div class="profile-avatar">👤</div>
+                    <div style="text-align:center;margin-bottom:12px;">
+                        <div style="font-size:18px;font-weight:700;">${user?.username || 'Без username'}</div>
+                        <div style="font-size:13px;color:var(--text-secondary);">ID: ${userId}</div>
+                    </div>
+                    <div class="profile-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">${user?.balance || 0}</div>
+                            <div class="stat-label">⭐ Баланс</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${user?.total_bought || 0}</div>
+                            <div class="stat-label">📥 Куплено</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${user?.total_sold || 0}</div>
+                            <div class="stat-label">📤 Продано</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:16px;">
+                        <button class="btn btn-success" onclick="openTopup()">⭐ Пополнить баланс</button>
+                        <button class="btn btn-primary" style="margin-top:8px;" onclick="openWithdraw()">💰 Вывести Stars</button>
+                        <button class="btn btn-secondary" style="margin-top:8px;" onclick="openSell()">📢 Выставить username</button>
+                        <button class="btn btn-outline" style="margin-top:8px;" onclick="refreshData()">🔄 Обновить</button>
+                    </div>
+                `;
+
+                if (myChannels && myChannels.length > 0) {
+                    html += `<div style="margin-top:16px;"><h4 style="margin-bottom:8px;">Мои каналы</h4>`;
+                    myChannels.forEach(ch => {
+                        const badge = ch.is_auction ? 'badge-auction' : 'badge-fixed';
+                        const label = ch.is_auction ? 'Аукцион' : 'Фикс';
+                        const statusClass = ch.status === 'active' ? 'status-active' :
+                            ch.status === 'waiting_transfer' ? 'status-waiting' : 'status-sold';
+                        const statusText = ch.status === 'active' ? 'В продаже' :
+                            ch.status === 'waiting_transfer' ? 'Ожидает' : 'Продано';
+                        html += `
+                            <div class="channel-item" onclick="editChannel(${ch.id})">
+                                <div class="channel-info">
+                                    <div class="channel-name">${ch.title || ch.username}</div>
+                                    <div class="channel-username">@${ch.username}</div>
+                                </div>
+                                <div class="channel-meta">
+                                    <div style="font-weight:600;color:var(--success);">${ch.price} ⭐</div>
+                                    <span class="card-badge ${badge}" style="font-size:10px;">${label}</span>
+                                    <span class="status-badge ${statusClass}" style="font-size:9px;">${statusText}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                }
+
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Render profile error:', e);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">❌</div>
+                        <h3>Ошибка загрузки</h3>
+                        <p style="font-size:13px;color:var(--text-secondary);">${e.message}</p>
+                    </div>
+                `;
+                showToast('Ошибка загрузки: ' + e.message, 'error');
+            }
+        }
+
+        async function renderAdmin() {
+            const container = $('adminContent');
+            const userId = tg.initDataUnsafe?.user?.id;
+            const ADMIN_IDS = [7967408962];
+
+            if (!userId || !ADMIN_IDS.includes(userId)) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔒</div>
+                        <h3>Нет доступа к админ-панели</h3>
+                    </div>
+                `;
                 return;
             }
 
-            // Загружаем данные пользователя
-            await loadUserData();
-
-            // Настраиваем вкладки
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', () => {
-                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
-                    
-                    const pageId = tab.dataset.tab;
-                    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-                    document.getElementById(`page-${pageId}`).classList.add('active');
-
-                    // Загружаем соответствующие данные
-                    switch(pageId) {
-                        case 'buy':
-                            loadChannels('fixed', 0);
-                            break;
-                        case 'auction':
-                            loadChannels('auction', 0);
-                            break;
-                        case 'my':
-                            loadMyChannels();
-                            break;
-                        case 'profile':
-                            renderProfile();
-                            break;
-                    }
-                });
-            });
-
-            // Загружаем начальные данные
-            loadChannels('fixed', 0);
-
-            // Скрываем загрузчик
-            document.getElementById('loader').classList.add('hidden');
-        });
-
-        // ============================================================
-        // ФУНКЦИИ API
-        // ============================================================
-
-        async function apiCall(endpoint, data) {
-            try {
-                const response = await fetch(`${API_BASE}${endpoint}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data),
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `HTTP ${response.status}`);
-                }
-                
-                return await response.json();
-            } catch (error) {
-                console.error('API Error:', error);
-                showToast(`❌ Ошибка: ${error.message}`, 'error');
-                throw error;
-            }
-        }
-
-        // ============================================================
-        // ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ
-        // ============================================================
-
-        async function loadUserData() {
-            try {
-                const result = await apiCall('/api/user', { user_id: parseInt(USER_ID) });
-                USER_DATA = result;
-                updateBalance(result.balance);
-                return result;
-            } catch (error) {
-                console.error('Failed to load user data:', error);
-                return null;
-            }
-        }
-
-        function updateBalance(balance) {
-            document.getElementById('balanceDisplay').textContent = balance || 0;
-        }
-
-        // ============================================================
-        // ЗАГРУЗКА КАНАЛОВ
-        // ============================================================
-
-        async function loadChannels(type, page) {
-            if (isLoading) return;
-            isLoading = true;
-
-            currentType = type;
-            currentPage = page;
+            state.adminMode = true;
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>';
 
             try {
-                const result = await apiCall('/api/channels', {
-                    user_id: parseInt(USER_ID),
-                    type: type,
-                    page: page
-                });
+                const requests = await api.getWithdrawRequests();
+                state.withdrawRequests = requests;
 
-                const container = type === 'fixed' ? 
-                    document.getElementById('buyList') : 
-                    document.getElementById('auctionList');
+                let html = `
+                    <div style="margin-bottom:12px;">
+                        <button class="btn btn-secondary" onclick="adminGiveBalance()">💰 Выдать баланс</button>
+                        <button class="btn btn-outline" style="margin-top:6px;" onclick="adminBroadcast()">📢 Рассылка</button>
+                    </div>
+                    <div class="admin-section">
+                        <div class="admin-section-title">📝 Заявки на вывод (${requests?.length || 0})</div>
+                `;
 
-                if (result.channels && result.channels.length > 0) {
-                    container.innerHTML = result.channels.map(ch => renderChannelCard(ch, type)).join('');
-                    totalPages = result.total_pages;
-                    
-                    // Пагинация
-                    if (totalPages > 1) {
-                        container.innerHTML += renderPagination(page, totalPages, type);
-                    }
+                if (!requests || requests.length === 0) {
+                    html += `<div style="text-align:center;padding:20px;color:var(--text-secondary);">Нет заявок</div>`;
                 } else {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-state-icon">📭</div>
-                            <div class="empty-state-text">Нет доступных каналов</div>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error('Failed to load channels:', error);
-            } finally {
-                isLoading = false;
-            }
-        }
-
-        function renderChannelCard(channel, type) {
-            const isAuction = channel.is_auction === 1;
-            const badge = isAuction ? 
-                '<span class="badge badge-auction">🔨 Аукцион</span>' : 
-                '<span class="badge badge-fixed">📢 Фикс</span>';
-
-            let actionHtml = '';
-            if (isAuction) {
-                const currentBid = channel.current_bid || channel.price;
-                actionHtml = `
-                    <div class="card-bid">💰 Текущая ставка: <span>${currentBid} ⭐</span></div>
-                    <div class="card-actions">
-                        <button class="btn btn-primary" onclick="openBidModal(${channel.id}, ${currentBid})">
-                            📈 Сделать ставку
-                        </button>
-                    </div>
-                `;
-            } else {
-                actionHtml = `
-                    <div class="card-actions">
-                        <button class="btn btn-success" onclick="buyChannel(${channel.id}, ${channel.price})">
-                            💎 Купить за ${channel.price} ⭐
-                        </button>
-                    </div>
-                `;
-            }
-
-            return `
-                <div class="card">
-                    <div class="card-title">${channel.title}</div>
-                    <div class="card-username">@${channel.username}</div>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
-                        ${badge}
-                    </div>
-                    ${actionHtml}
-                </div>
-            `;
-        }
-
-        function renderPagination(page, total, type) {
-            let html = '<div class="pagination">';
-            
-            if (page > 0) {
-                html += `<button class="btn btn-outline btn-sm" onclick="loadChannels('${type}', ${page - 1})">◀</button>`;
-            }
-            
-            html += `<span style="color:#6c6c8a; padding:8px 12px;">${page + 1} / ${total}</span>`;
-            
-            if (page < total - 1) {
-                html += `<button class="btn btn-outline btn-sm" onclick="loadChannels('${type}', ${page + 1})">▶</button>`;
-            }
-            
-            html += '</div>';
-            return html;
-        }
-
-        // ============================================================
-        // МОИ КАНАЛЫ
-        // ============================================================
-
-        async function loadMyChannels() {
-            try {
-                const result = await apiCall('/api/user_channels', {
-                    user_id: parseInt(USER_ID)
-                });
-
-                const container = document.getElementById('myChannels');
-
-                if (result.channels && result.channels.length > 0) {
-                    container.innerHTML = result.channels.map(ch => {
-                        const isAuction = ch.is_auction === 1;
-                        const statusMap = {
-                            'active': 'Активен',
-                            'waiting_transfer': 'Ожидает передачи',
-                            'sold': 'Продан',
-                            'removed': 'Снят'
-                        };
-                        const statusClass = {
-                            'active': 'active',
-                            'waiting_transfer': 'waiting',
-                            'sold': 'sold',
-                            'removed': 'cancelled'
-                        };
-                        const badge = isAuction ? 
-                            '<span class="badge badge-auction">🔨 Аукцион</span>' : 
-                            '<span class="badge badge-fixed">📢 Фикс</span>';
-
-                        let extra = '';
-                        if (isAuction && ch.current_bid) {
-                            extra = `<div class="card-bid">💰 Текущая ставка: <span>${ch.current_bid} ⭐</span></div>`;
-                        }
-
-                        return `
-                            <div class="card">
-                                <div class="card-title">${ch.title}</div>
-                                <div class="card-username">@${ch.username}</div>
-                                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
-                                    ${badge}
-                                    <span class="card-status ${statusClass[ch.status] || ''}">${statusMap[ch.status] || ch.status}</span>
+                    requests.forEach(req => {
+                        html += `
+                            <div class="request-item">
+                                <div class="request-info">
+                                    <div class="request-user">👤 ${req.username || req.user_id}</div>
+                                    <div class="request-amount">⭐ ${req.amount}</div>
+                                    <div style="font-size:11px;color:var(--text-secondary);">${formatTime(req.created_at)}</div>
                                 </div>
-                                <div class="card-price">${ch.price} ⭐</div>
-                                ${extra}
-                                ${ch.status === 'waiting_transfer' ? `
-                                    <div class="card-actions">
-                                        <button class="btn btn-primary btn-sm" onclick="checkTransferForChannel(${ch.id})">
-                                            ✅ Проверить передачу
-                                        </button>
-                                    </div>
-                                ` : ''}
+                                <div class="request-actions">
+                                    <button class="btn btn-success btn-sm" onclick="adminApprove(${req.id})">✅</button>
+                                    <button class="btn btn-danger btn-sm" onclick="adminReject(${req.id})">❌</button>
+                                </div>
                             </div>
                         `;
-                    }).join('');
-                } else {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-state-icon">📭</div>
-                            <div class="empty-state-text">У вас нет выставленных каналов</div>
-                        </div>
-                    `;
+                    });
                 }
-            } catch (error) {
-                console.error('Failed to load my channels:', error);
-            }
-        }
-
-        // ============================================================
-        // ПРОФИЛЬ
-        // ============================================================
-
-        async function renderProfile() {
-            try {
-                const user = await loadUserData();
-                if (!user) return;
-
-                const container = document.getElementById('profileContent');
+                html += `</div>`;
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Render admin error:', e);
                 container.innerHTML = `
-                    <div class="card">
-                        <div style="text-align:center; margin-bottom:12px;">
-                            <div style="font-size:48px; margin-bottom:4px;">👤</div>
-                            <div style="font-size:18px; font-weight:600;">${user.username ? '@' + user.username : 'Пользователь'}</div>
-                            <div style="font-size:12px; color:#6c6c8a;">ID: ${user.user_id}</div>
-                        </div>
-
-                        <div class="profile-stats">
-                            <div class="profile-stat">
-                                <div class="profile-stat-value">${user.balance}</div>
-                                <div class="profile-stat-label">⭐ Баланс</div>
-                            </div>
-                            <div class="profile-stat">
-                                <div class="profile-stat-value">${user.total_bought || 0}</div>
-                                <div class="profile-stat-label">📦 Куплено</div>
-                            </div>
-                            <div class="profile-stat">
-                                <div class="profile-stat-value">${user.total_sold || 0}</div>
-                                <div class="profile-stat-label">📤 Продано</div>
-                            </div>
-                            <div class="profile-stat">
-                                <div class="profile-stat-value">${user.total_spent || 0}</div>
-                                <div class="profile-stat-label">💸 Потрачено</div>
-                            </div>
-                        </div>
-
-                        <div class="card-actions" style="flex-direction:column;">
-                            <button class="btn btn-primary btn-full" onclick="openWithdrawModal()">
-                                💳 Вывести Stars
-                            </button>
-                            <button class="btn btn-success btn-full" onclick="openTopupModal()">
-                                ⭐ Пополнить баланс
-                            </button>
-                        </div>
+                    <div class="empty-state">
+                        <div class="empty-icon">❌</div>
+                        <h3>Ошибка загрузки</h3>
+                        <p style="font-size:13px;color:var(--text-secondary);">${e.message}</p>
                     </div>
                 `;
-            } catch (error) {
-                console.error('Failed to render profile:', error);
             }
         }
 
         // ============================================================
-        // ПОКУПКА КАНАЛА
+        // VIEW FUNCTIONS
         // ============================================================
+        async function viewChannel(id) {
+            const ch = state.channels.find(c => c.id === id);
+            if (!ch) { showToast('Канал не найден', 'error'); return; }
 
-        async function buyChannel(channelId, price) {
-            if (!confirm(`Купить этот канал за ${price} ⭐?`)) return;
+            const html = `
+                <div style="text-align:center;margin-bottom:16px;">
+                    <div style="font-size:20px;font-weight:700;">${ch.title || ch.username}</div>
+                    <div style="color:var(--text-secondary);">@${ch.username}</div>
+                    <div style="font-size:24px;font-weight:700;color:var(--success);margin:12px 0;">⭐ ${ch.price}</div>
+                    <div style="font-size:13px;color:var(--text-secondary);">Продавец: ${ch.seller_id}</div>
+                </div>
+                <button class="btn btn-success" onclick="buyChannel(${ch.id})">Купить за ${ch.price} ⭐</button>
+                <button class="btn btn-outline" style="margin-top:8px;" onclick="closeModal()">Назад</button>
+            `;
+            openModal('📢 ' + (ch.title || ch.username), html);
+        }
+
+        async function viewAuction(id) {
+            const ch = state.auctions.find(c => c.id === id);
+            if (!ch) { showToast('Аукцион не найден', 'error'); return; }
+
+            const currentBid = ch.auction_current_bid || ch.price;
+            const minBid = currentBid + CONFIG.MIN_AUCTION_BID;
+            const timeText = ch.auction_end_time ? timeRemaining(ch.auction_end_time) : 'Ожидает первой ставки';
+
+            const html = `
+                <div style="text-align:center;margin-bottom:16px;">
+                    <div style="font-size:20px;font-weight:700;">${ch.title || ch.username}</div>
+                    <div style="color:var(--text-secondary);">@${ch.username}</div>
+                    <div style="font-size:14px;color:var(--text-secondary);margin:8px 0;">⏱ ${timeText}</div>
+                    <div style="font-size:18px;font-weight:700;color:var(--success);">
+                        Текущая ставка: ${currentBid} ⭐
+                    </div>
+                    <div style="font-size:13px;color:var(--text-secondary);">
+                        Минимальная: ${minBid} ⭐
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ваша ставка (минимум ${minBid})</label>
+                    <input class="form-input" id="bidAmount" type="number" value="${minBid}" min="${minBid}">
+                </div>
+                <button class="btn btn-success" onclick="placeBid(${ch.id})">Сделать ставку</button>
+                <button class="btn btn-outline" style="margin-top:8px;" onclick="closeModal()">Назад</button>
+            `;
+            openModal('🔨 ' + (ch.title || ch.username), html);
+        }
+
+        async function editChannel(id) {
+            const ch = state.myChannels.find(c => c.id === id);
+            if (!ch) { showToast('Канал не найден', 'error'); return; }
+
+            const html = `
+                <div style="text-align:center;margin-bottom:12px;">
+                    <div style="font-size:18px;font-weight:700;">${ch.title || ch.username}</div>
+                    <div style="color:var(--text-secondary);">@${ch.username}</div>
+                    <div style="font-size:16px;font-weight:700;color:var(--success);margin:8px 0;">⭐ ${ch.price}</div>
+                    <div style="font-size:12px;color:var(--text-secondary);">
+                        Статус: ${ch.status === 'active' ? '🟢 В продаже' : ch.status === 'waiting_transfer' ? '🟡 Ожидает' : '🔴 Продано'}
+                    </div>
+                </div>
+                ${!ch.is_auction && ch.status === 'active' ? `
+                    <div class="form-group">
+                        <label class="form-label">Новая цена</label>
+                        <input class="form-input" id="newPrice" type="number" value="${ch.price}" min="${CONFIG.MIN_SELL_PRICE}">
+                    </div>
+                    <button class="btn btn-primary" onclick="updatePrice(${ch.id})">Изменить цену</button>
+                ` : ch.is_auction ? `
+                    <div style="text-align:center;color:var(--text-secondary);font-size:13px;">Цену аукциона изменить нельзя</div>
+                ` : `
+                    <div style="text-align:center;color:var(--text-secondary);font-size:13px;">Канал уже продан</div>
+                `}
+                ${ch.status === 'active' ? `
+                    <button class="btn btn-danger" style="margin-top:8px;" onclick="deleteChannel(${ch.id})">Снять с продажи</button>
+                ` : ''}
+                <button class="btn btn-outline" style="margin-top:8px;" onclick="closeModal()">Назад</button>
+            `;
+            openModal('⚙️ Управление', html);
+        }
+
+        // ============================================================
+        // ACTION FUNCTIONS
+        // ============================================================
+        async function buyChannel(id) {
+            const userId = tg.initDataUnsafe?.user?.id;
+            if (!userId) {
+                showToast('Авторизуйтесь в Telegram', 'error');
+                return;
+            }
+
+            closeModal();
+            showToast('Обработка покупки...', 'info');
 
             try {
-                const result = await apiCall('/api/buy', {
-                    user_id: parseInt(USER_ID),
-                    channel_id: channelId
-                });
-
+                const result = await api.buyChannel(id, userId);
                 if (result.success) {
-                    showToast(`✅ Канал куплен! ${result.message}`, 'success');
-                    await loadUserData();
-                    loadChannels(currentType, currentPage);
+                    showToast(`✅ Куплено за ${result.price} Stars!`, 'success');
+                    refreshData();
                 } else {
-                    showToast(`❌ ${result.error}`, 'error');
+                    showToast('❌ ' + (result.error || 'Ошибка покупки'), 'error');
                 }
-            } catch (error) {
-                console.error('Buy error:', error);
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
             }
         }
 
-        // ============================================================
-        // СТАВКА НА АУКЦИОНЕ
-        // ============================================================
+        async function placeBid(id) {
+            const input = document.getElementById('bidAmount');
+            if (!input) return;
+            const amount = parseInt(input.value);
+            if (isNaN(amount) || amount <= 0) {
+                showToast('Введите корректную сумму', 'error');
+                return;
+            }
 
-        function openBidModal(channelId, currentBid) {
-            const modal = document.getElementById('modal');
-            const title = document.getElementById('modalTitle');
-            const text = document.getElementById('modalText');
-            const input = document.getElementById('modalInput');
-            const confirmBtn = document.getElementById('modalConfirmBtn');
+            const userId = tg.initDataUnsafe?.user?.id;
+            if (!userId) {
+                showToast('Авторизуйтесь в Telegram', 'error');
+                return;
+            }
 
-            title.textContent = '📈 Сделать ставку';
-            text.innerHTML = `Текущая ставка: <b>${currentBid} ⭐</b><br>Минимальная ставка: <b>${currentBid + 1} ⭐</b>`;
-            input.style.display = 'block';
-            input.placeholder = `Введите сумму (мин ${currentBid + 1})`;
-            input.value = currentBid + 1;
-            input.min = currentBid + 1;
+            closeModal();
+            showToast('Обработка ставки...', 'info');
 
-            confirmBtn.onclick = async () => {
-                const amount = parseInt(input.value);
-                if (isNaN(amount) || amount < currentBid + 1) {
-                    showToast(`❌ Минимальная ставка: ${currentBid + 1} ⭐`, 'error');
-                    return;
-                }
-
-                try {
-                    const result = await apiCall('/api/bid', {
-                        user_id: parseInt(USER_ID),
-                        channel_id: channelId,
-                        bid_amount: amount
-                    });
-
-                    if (result.success) {
-                        showToast(`✅ Ставка ${amount} ⭐ принята!`, 'success');
-                        await loadUserData();
-                        loadChannels('auction', currentPage);
-                        closeModal();
-                    } else {
-                        showToast(`❌ ${result.error}`, 'error');
-                    }
-                } catch (error) {
-                    console.error('Bid error:', error);
-                }
-            };
-
-            modal.classList.add('show');
-        }
-
-        // ============================================================
-        // ПРОВЕРКА ПЕРЕДАЧИ (для моих каналов)
-        // ============================================================
-
-        async function checkTransferForChannel(channelId) {
-            // Находим активную сделку по каналу
             try {
-                const deals = await apiCall('/api/user_deals', {
-                    user_id: parseInt(USER_ID)
-                });
-
-                const deal = deals.deals?.find(d => 
-                    d.channel_id === channelId && d.status === 'waiting_transfer'
-                );
-
-                if (!deal) {
-                    showToast('❌ Нет активной сделки для этого канала', 'error');
-                    return;
-                }
-
-                const result = await apiCall('/api/check_transfer', {
-                    user_id: parseInt(USER_ID),
-                    deal_id: deal.id
-                });
-
+                const result = await api.placeBid(id, userId, amount);
                 if (result.success) {
-                    showToast('✅ Передача подтверждена!', 'success');
-                    await loadUserData();
-                    loadMyChannels();
+                    showToast(`✅ Ставка ${result.amount} ⭐ принята!`, 'success');
+                    refreshData();
                 } else {
-                    showToast(`❌ ${result.message || 'Передача не подтверждена'}`, 'error');
+                    showToast('❌ ' + (result.error || 'Ошибка ставки'), 'error');
                 }
-            } catch (error) {
-                console.error('Check transfer error:', error);
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+
+        async function updatePrice(id) {
+            const input = document.getElementById('newPrice');
+            if (!input) return;
+            const price = parseInt(input.value);
+            if (isNaN(price) || price < CONFIG.MIN_SELL_PRICE) {
+                showToast(`Минимальная цена ${CONFIG.MIN_SELL_PRICE} ⭐`, 'error');
+                return;
+            }
+
+            const userId = tg.initDataUnsafe?.user?.id;
+            if (!userId) {
+                showToast('Авторизуйтесь в Telegram', 'error');
+                return;
+            }
+
+            closeModal();
+            showToast('Обновление цены...', 'info');
+
+            try {
+                const result = await api.updateChannelPrice(id, userId, price);
+                if (result.success) {
+                    showToast('✅ Цена обновлена', 'success');
+                    refreshData();
+                } else {
+                    showToast('❌ ' + (result.error || 'Ошибка обновления'), 'error');
+                }
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+
+        async function deleteChannel(id) {
+            if (!confirm('Снять канал с продажи?')) return;
+
+            const userId = tg.initDataUnsafe?.user?.id;
+            if (!userId) {
+                showToast('Авторизуйтесь в Telegram', 'error');
+                return;
+            }
+
+            closeModal();
+            showToast('Снятие с продажи...', 'info');
+
+            try {
+                const result = await api.deleteChannel(id, userId);
+                if (result.success) {
+                    showToast('✅ Канал снят с продажи', 'success');
+                    refreshData();
+                } else {
+                    showToast('❌ ' + (result.error || 'Ошибка'), 'error');
+                }
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+
+        function openTopup() {
+            const html = `
+                <div style="text-align:center;margin-bottom:16px;">
+                    <div style="font-size:14px;color:var(--text-secondary);">Пополните баланс Telegram Stars</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">Баланс: ${state.balance} ⭐</div>
+                </div>
+                <div class="grid-2">
+                    <button class="btn btn-success btn-sm" onclick="topupAmount(10)">10 ⭐</button>
+                    <button class="btn btn-success btn-sm" onclick="topupAmount(50)">50 ⭐</button>
+                    <button class="btn btn-success btn-sm" onclick="topupAmount(100)">100 ⭐</button>
+                    <button class="btn btn-success btn-sm" onclick="topupAmount(500)">500 ⭐</button>
+                </div>
+                <div class="form-group" style="margin-top:12px;">
+                    <label class="form-label">Своя сумма</label>
+                    <input class="form-input" id="customTopup" type="number" placeholder="Введите сумму" min="1">
+                </div>
+                <button class="btn btn-primary" onclick="topupCustom()">Пополнить</button>
+                <div class="divider"></div>
+                <div style="text-align:center;font-size:13px;color:var(--text-secondary);">Или через CryptoBot</div>
+                <button class="btn btn-secondary" onclick="openCryptoTopup()">🪙 Пополнить через CryptoBot</button>
+                <button class="btn btn-outline" style="margin-top:8px;" onclick="closeModal()">Назад</button>
+            `;
+            openModal('⭐ Пополнение', html);
+        }
+
+        function openCryptoTopup() {
+            const html = `
+                <div style="text-align:center;margin-bottom:12px;">
+                    <div style="font-size:14px;color:var(--text-secondary);">Пополнение через CryptoBot</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Выберите валюту</label>
+                    <select class="form-select" id="cryptoCurrency">
+                        <option value="USDT">USDT</option>
+                        <option value="TON">TON</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Сумма в Stars</label>
+                    <input class="form-input" id="cryptoAmount" type="number" placeholder="Введите сумму" min="1">
+                </div>
+                <button class="btn btn-success" onclick="cryptoTopup()">Создать счет</button>
+                <button class="btn btn-outline" style="margin-top:8px;" onclick="openTopup()">Назад</button>
+            `;
+            openModal('🪙 CryptoBot', html);
+        }
+
+        async function cryptoTopup() {
+            const amount = parseInt(document.getElementById('cryptoAmount').value);
+            const currency = document.getElementById('cryptoCurrency').value;
+
+            if (isNaN(amount) || amount <= 0) {
+                showToast('Введите корректную сумму', 'error');
+                return;
+            }
+
+            const userId = tg.initDataUnsafe?.user?.id;
+            if (!userId) {
+                showToast('Авторизуйтесь в Telegram', 'error');
+                return;
+            }
+
+            closeModal();
+            showToast('Создание счета...', 'info');
+
+            try {
+                const result = await api.createCryptoInvoice(userId, amount, currency);
+                if (result.success && result.pay_url) {
+                    window.open(result.pay_url, '_blank');
+                    showToast('✅ Счет создан!', 'success');
+                    setTimeout(async () => {
+                        const checkResult = await api.checkPayment(result.payment_id);
+                        if (checkResult.status === 'paid') {
+                            showToast('✅ Платеж подтвержден!', 'success');
+                            refreshData();
+                        }
+                    }, 30000);
+                } else {
+                    showToast('❌ ' + (result.error || 'Ошибка создания счета'), 'error');
+                }
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+
+        async function topupAmount(amount) {
+            const userId = tg.initDataUnsafe?.user?.id;
+            if (!userId) {
+                showToast('Авторизуйтесь в Telegram', 'error');
+                return;
+            }
+
+            closeModal();
+            showToast('Создание инвойса...', 'info');
+
+            try {
+                const result = await api.createInvoice(userId, amount);
+                if (result.success && result.invoice_link) {
+                    window.open(result.invoice_link, '_blank');
+                    showToast('✅ Инвойс создан!', 'success');
+                    setTimeout(async () => {
+                        const checkResult = await api.checkPayment(result.payment_id);
+                        if (checkResult.status === 'paid') {
+                            showToast('✅ Платеж подтвержден!', 'success');
+                            refreshData();
+                        }
+                    }, 30000);
+                } else {
+                    showToast('❌ ' + (result.error || 'Ошибка создания инвойса'), 'error');
+                }
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+
+        async function topupCustom() {
+            const input = document.getElementById('customTopup');
+            if (!input) return;
+            const amount = parseInt(input.value);
+            if (isNaN(amount) || amount <= 0) {
+                showToast('Введите корректную сумму', 'error');
+                return;
+            }
+            await topupAmount(amount);
+        }
+
+        function openWithdraw() {
+            const html = `
+                <div style="text-align:center;margin-bottom:16px;">
+                    <div style="font-size:14px;color:var(--text-secondary);">
+                        Минимум ${CONFIG.MIN_WITHDRAW} ⭐<br>
+                        Максимум ${CONFIG.MAX_WITHDRAW} ⭐<br>
+                        Баланс: ${state.balance} ⭐
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Сумма вывода</label>
+                    <input class="form-input" id="withdrawAmount" type="number" 
+                           placeholder="Введите сумму" 
+                           min="${CONFIG.MIN_WITHDRAW}" 
+                           max="${Math.min(state.balance, CONFIG.MAX_WITHDRAW)}">
+                </div>
+                <button class="btn btn-primary" onclick="withdrawSubmit()">Вывести</button>
+                <button class="btn btn-outline" style="margin-top:8px;" onclick="closeModal()">Назад</button>
+            `;
+            openModal('💰 Вывод Stars', html);
+        }
+
+        async function withdrawSubmit() {
+            const input = document.getElementById('withdrawAmount');
+            if (!input) return;
+            const amount = parseInt(input.value);
+
+            if (isNaN(amount) || amount < CONFIG.MIN_WITHDRAW) {
+                showToast(`Минимум ${CONFIG.MIN_WITHDRAW} ⭐`, 'error');
+                return;
+            }
+
+            if (amount > CONFIG.MAX_WITHDRAW) {
+                showToast(`Максимум ${CONFIG.MAX_WITHDRAW} ⭐`, 'error');
+                return;
+            }
+
+            if (amount > state.balance) {
+                showToast(`Недостаточно средств. Баланс: ${state.balance} ⭐`, 'error');
+                return;
+            }
+
+            const userId = tg.initDataUnsafe?.user?.id;
+            if (!userId) {
+                showToast('Авторизуйтесь в Telegram', 'error');
+                return;
+            }
+
+            closeModal();
+            showToast('Создание заявки...', 'info');
+
+            try {
+                const result = await api.withdraw(userId, amount);
+                if (result.success) {
+                    showToast(`✅ Заявка #${result.request_id} создана`, 'success');
+                    refreshData();
+                } else {
+                    showToast('❌ ' + (result.error || 'Ошибка'), 'error');
+                }
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+
+        function openSell() {
+            const html = `
+                <div style="text-align:center;margin-bottom:12px;">
+                    <div style="font-size:14px;color:var(--text-secondary);">Выберите способ продажи</div>
+                </div>
+                <button class="btn btn-secondary" onclick="sellFixed()">📢 Фиксированная цена</button>
+                <button class="btn btn-success" style="margin-top:8px;" onclick="sellAuction()">🔨 Аукцион</button>
+                <button class="btn btn-outline" style="margin-top:8px;" onclick="closeModal()">Назад</button>
+            `;
+            openModal('📢 Продажа', html);
+        }
+
+        function sellFixed() {
+            const html = `
+                <div class="form-group">
+                    <label class="form-label">Ссылка на канал (или @username)</label>
+                    <input class="form-input" id="sellUsername" placeholder="https://t.me/username или @username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Название канала</label>
+                    <input class="form-input" id="sellTitle" placeholder="Название канала">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Цена (⭐)</label>
+                    <input class="form-input" id="sellPrice" type="number" placeholder="Цена в Stars" min="${CONFIG.MIN_SELL_PRICE}">
+                </div>
+                <button class="btn btn-success" onclick="submitSell(false)">Выставить на продажу</button>
+                <button class="btn btn-outline" style="margin-top:8px;" onclick="openSell()">Назад</button>
+            `;
+            openModal('📢 Фиксированная цена', html);
+        }
+
+        function sellAuction() {
+            const html = `
+                <div class="form-group">
+                    <label class="form-label">Ссылка на канал (или @username)</label>
+                    <input class="form-input" id="sellUsername" placeholder="https://t.me/username или @username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Название канала</label>
+                    <input class="form-input" id="sellTitle" placeholder="Название канала">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Стартовая цена (⭐)</label>
+                    <input class="form-input" id="sellPrice" type="number" placeholder="Стартовая цена" min="${CONFIG.MIN_SELL_PRICE}">
+                </div>
+                <button class="btn btn-success" onclick="submitSell(true)">Выставить на аукцион</button>
+                <button class="btn btn-outline" style="margin-top:8px;" onclick="openSell()">Назад</button>
+            `;
+            openModal('🔨 Аукцион', html);
+        }
+
+        async function submitSell(isAuction) {
+            const username = document.getElementById('sellUsername').value.trim();
+            const title = document.getElementById('sellTitle').value.trim() || username;
+            const price = parseInt(document.getElementById('sellPrice').value);
+
+            if (!username) {
+                showToast('Введите ссылку на канал', 'error');
+                return;
+            }
+            if (isNaN(price) || price < CONFIG.MIN_SELL_PRICE) {
+                showToast(`Минимальная цена ${CONFIG.MIN_SELL_PRICE} ⭐`, 'error');
+                return;
+            }
+
+            const userId = tg.initDataUnsafe?.user?.id;
+            if (!userId) {
+                showToast('Авторизуйтесь в Telegram', 'error');
+                return;
+            }
+
+            closeModal();
+            showToast('Выставление канала...', 'info');
+
+            try {
+                const result = await api.sellChannel(userId, username, title, price, isAuction);
+                if (result.success) {
+                    showToast('✅ Канал выставлен!', 'success');
+                    refreshData();
+                } else {
+                    showToast('❌ ' + (result.error || 'Ошибка'), 'error');
+                }
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
             }
         }
 
         // ============================================================
-        // ВЫВОД СРЕДСТВ
+        // ADMIN FUNCTIONS
         // ============================================================
+        function adminGiveBalance() {
+            const html = `
+                <div class="form-group">
+                    <label class="form-label">ID пользователя</label>
+                    <input class="form-input" id="adminUserId" type="number" placeholder="Telegram ID">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Сумма (⭐)</label>
+                    <input class="form-input" id="adminBalanceAmount" type="number" placeholder="Количество Stars">
+                </div>
+                <button class="btn btn-success" onclick="adminGiveBalanceSubmit()">Выдать</button>
+                <button class="btn btn-outline" style="margin-top:8px;" onclick="closeModal()">Назад</button>
+            `;
+            openModal('💰 Выдать баланс', html);
+        }
 
-        function openWithdrawModal() {
-            const modal = document.getElementById('modal');
-            const title = document.getElementById('modalTitle');
-            const text = document.getElementById('modalText');
-            const input = document.getElementById('modalInput');
-            const confirmBtn = document.getElementById('modalConfirmBtn');
+        async function adminGiveBalanceSubmit() {
+            const userId = parseInt(document.getElementById('adminUserId').value);
+            const amount = parseInt(document.getElementById('adminBalanceAmount').value);
 
-            title.textContent = '💳 Вывод Stars';
-            text.innerHTML = `Ваш баланс: <b>${USER_DATA?.balance || 0} ⭐</b><br>Минимальная сумма: <b>50 ⭐</b>`;
-            input.style.display = 'block';
-            input.placeholder = 'Введите сумму вывода';
-            input.value = '';
-            input.min = 50;
+            if (isNaN(userId) || isNaN(amount) || amount <= 0) {
+                showToast('Введите корректные данные', 'error');
+                return;
+            }
 
-            confirmBtn.onclick = async () => {
-                const amount = parseInt(input.value);
-                if (isNaN(amount) || amount < 50) {
-                    showToast('❌ Минимальная сумма вывода: 50 ⭐', 'error');
-                    return;
+            closeModal();
+            showToast('Выдача баланса...', 'info');
+
+            try {
+                const result = await api.giveBalance(userId, amount);
+                if (result.success) {
+                    showToast(`✅ ${amount} ⭐ выдано пользователю ${userId}`, 'success');
+                    renderAdmin();
+                } else {
+                    showToast('❌ ' + (result.error || 'Ошибка'), 'error');
                 }
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
 
-                if (amount > (USER_DATA?.balance || 0)) {
-                    showToast('❌ Недостаточно средств', 'error');
-                    return;
+        function adminBroadcast() {
+            const html = `
+                <div class="form-group">
+                    <label class="form-label">Сообщение для рассылки</label>
+                    <textarea class="form-input" id="broadcastMsg" rows="4" placeholder="Текст сообщения..."></textarea>
+                </div>
+                <button class="btn btn-primary" onclick="adminBroadcastSubmit()">Отправить</button>
+                <button class="btn btn-outline" style="margin-top:8px;" onclick="closeModal()">Назад</button>
+            `;
+            openModal('📢 Рассылка', html);
+        }
+
+        async function adminBroadcastSubmit() {
+            const msg = document.getElementById('broadcastMsg').value.trim();
+            if (!msg) {
+                showToast('Введите сообщение', 'error');
+                return;
+            }
+
+            closeModal();
+            showToast('Отправка рассылки...', 'info');
+
+            try {
+                const result = await api.broadcast(msg);
+                if (result.success) {
+                    showToast(`✅ Рассылка отправлена ${result.sent} пользователям`, 'success');
+                } else {
+                    showToast('❌ ' + (result.error || 'Ошибка'), 'error');
                 }
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
 
-                try {
-                    const result = await apiCall('/api/withdraw', {
-                        user_id: parseInt(USER_ID),
-                        amount: amount
-                    });
-
-                    if (result.success) {
-                        showToast(`✅ Заявка на вывод ${amount} ⭐ создана!`, 'success');
-                        await loadUserData();
-                        renderProfile();
-                        closeModal();
-                    } else {
-                        showToast(`❌ ${result.error}`, 'error');
-                    }
-                } catch (error) {
-                    console.error('Withdraw error:', error);
+        async function adminApprove(id) {
+            try {
+                const result = await api.approveWithdraw(id);
+                if (result.success) {
+                    showToast('✅ Заявка подтверждена', 'success');
+                    renderAdmin();
+                } else {
+                    showToast('❌ ' + (result.error || 'Ошибка'), 'error');
                 }
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+
+        async function adminReject(id) {
+            if (!confirm('Отклонить заявку?')) return;
+
+            try {
+                const result = await api.rejectWithdraw(id);
+                if (result.success) {
+                    showToast('❌ Заявка отклонена', 'error');
+                    renderAdmin();
+                } else {
+                    showToast('❌ ' + (result.error || 'Ошибка'), 'error');
+                }
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+
+        // ============================================================
+        // NAVIGATION
+        // ============================================================
+        function navigate(page) {
+            state.currentPage = page;
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+            const pageMap = {
+                'market': 'pageMarket',
+                'auctions': 'pageAuctions',
+                'profile': 'pageProfile',
+                'admin': 'pageAdmin'
             };
 
-            modal.classList.add('show');
-        }
+            $(pageMap[page]).classList.add('active');
+            const navBtn = document.querySelector(`[data-page="${page}"]`);
+            if (navBtn) navBtn.classList.add('active');
 
-        // ============================================================
-        // ПОПОЛНЕНИЕ
-        // ============================================================
-
-        function openTopupModal() {
-            const modal = document.getElementById('modal');
-            const title = document.getElementById('modalTitle');
-            const text = document.getElementById('modalText');
-            const input = document.getElementById('modalInput');
-            const confirmBtn = document.getElementById('modalConfirmBtn');
-
-            title.textContent = '⭐ Пополнение баланса';
-            text.innerHTML = 'Введите сумму пополнения в Stars:<br><br>💡 <b>10 ⭐</b> · <b>50 ⭐</b> · <b>100 ⭐</b> · <b>500 ⭐</b>';
-            input.style.display = 'block';
-            input.placeholder = 'Введите сумму';
-            input.value = '';
-            input.min = 1;
-
-            confirmBtn.onclick = async () => {
-                const amount = parseInt(input.value);
-                if (isNaN(amount) || amount < 1) {
-                    showToast('❌ Введите корректную сумму', 'error');
-                    return;
-                }
-
-                // Открываем Telegram Stars оплату через бота
-                const botUsername = 'UsernameSalerobot'; // Замените на вашего бота
-                const botUrl = `https://t.me/${botUsername}?start=topup_${amount}`;
-                window.open(botUrl, '_blank');
-                
-                showToast('📱 Откройте бота для оплаты', 'success');
-                closeModal();
-            };
-
-            modal.classList.add('show');
-        }
-
-        // ============================================================
-        // МОДАЛЬНОЕ ОКНО
-        // ============================================================
-
-        function closeModal() {
-            document.getElementById('modal').classList.remove('show');
-        }
-
-        // Закрытие по клику вне модального окна
-        document.getElementById('modal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) {
-                closeModal();
-            }
-        });
-
-        // ============================================================
-        // ТОСТ УВЕДОМЛЕНИЕ
-        // ============================================================
-
-        let toastTimeout = null;
-
-        function showToast(message, type = 'info') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = 'toast show';
-            
-            if (type === 'success') {
-                toast.classList.add('success');
-            } else if (type === 'error') {
-                toast.classList.add('error');
-            }
-
-            clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(() => {
-                toast.classList.remove('show');
-            }, 4000);
-        }
-
-        // ============================================================
-        // ЗАГРУЗКА ДАННЫХ ПРИ ПЕРЕКЛЮЧЕНИИ ВКЛАДОК
-        // ============================================================
-
-        // Добавляем автоматическую загрузку при переключении
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                const pageId = tab.dataset.tab;
-                if (pageId === 'profile') {
+            switch (page) {
+                case 'market':
+                    renderMarket();
+                    break;
+                case 'auctions':
+                    renderAuctions();
+                    break;
+                case 'profile':
                     renderProfile();
-                } else if (pageId === 'my') {
-                    loadMyChannels();
-                }
-            });
-        });
+                    break;
+                case 'admin':
+                    renderAdmin();
+                    break;
+            }
+        }
 
-        console.log('✅ Username Market WebApp загружен!');
-        console.log(`👤 User ID: ${USER_ID}`);
+        // ============================================================
+        // BALANCE
+        // ============================================================
+        function updateBalanceDisplay() {
+            $('balanceDisplay').textContent = state.balance;
+        }
+
+        function refreshBalance() {
+            renderProfile();
+        }
+
+        async function refreshData() {
+            showToast('Обновление...', 'info');
+            await Promise.all([
+                renderMarket(),
+                renderAuctions(),
+                renderProfile()
+            ]);
+            if (state.adminMode) {
+                await renderAdmin();
+            }
+        }
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        function init() {
+            document.body.classList.add('tg-theme');
+
+            const userId = tg.initDataUnsafe?.user?.id;
+            const ADMIN_IDS = [8102526978];
+            if (userId && ADMIN_IDS.includes(userId)) {
+                document.getElementById('navAdmin').style.display = 'block';
+                state.adminMode = true;
+            }
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const page = btn.dataset.page;
+                    if (page) navigate(page);
+                });
+            });
+
+            document.getElementById('modalOverlay').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) closeModal();
+            });
+
+            renderMarket();
+            renderAuctions();
+            renderProfile();
+            if (state.adminMode) {
+                renderAdmin();
+            }
+
+            setInterval(() => {
+                if (!document.querySelector('.modal-overlay.active')) {
+                    refreshData();
+                }
+            }, 30000);
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
