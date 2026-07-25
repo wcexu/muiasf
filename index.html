@@ -56,6 +56,7 @@
             align-items: center;
             gap: 8px;
             border: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
         }
         .header-balance span {
             color: var(--success);
@@ -361,6 +362,21 @@
             color: var(--success);
             font-size: 14px;
         }
+        .sync-btn {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--primary), #1a4a7a);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .sync-btn:active {
+            transform: scale(0.95);
+        }
         @media (max-width: 480px) {
             body { padding: 12px; padding-bottom: 70px; }
             .header-title { font-size: 18px; }
@@ -378,8 +394,13 @@
 
     <div class="header">
         <div class="header-title">🎯 Маркет</div>
-        <div class="header-balance">⭐ <span id="balance">0</span></div>
+        <div class="header-balance" onclick="loadUserData()">
+            ⭐ <span id="balance">0</span>
+            <span style="font-size:10px;color:var(--text-secondary);">🔄</span>
+        </div>
     </div>
+
+    <button class="sync-btn" onclick="loadUserData()">🔄 Синхронизировать с ботом</button>
 
     <div class="tabs">
         <button class="tab-btn active" data-tab="market" onclick="switchTab('market')">🏪 Маркет</button>
@@ -419,48 +440,113 @@
             loading: false
         };
 
+        let lastSyncTime = 0;
+
         document.addEventListener('DOMContentLoaded', () => {
             const user = tg.initDataUnsafe?.user;
             if (user) {
                 state.user = user;
-                loadUserData();
+                // Автоматическая загрузка данных через 1 секунду
+                setTimeout(loadUserData, 1000);
             } else {
-                showToast('Ошибка авторизации', 'error');
+                showToast('⚠️ Авторизуйтесь в боте', 'error');
             }
-            tg.MainButton.text = 'Обновить';
+            tg.MainButton.text = '🔄 Обновить';
             tg.MainButton.onClick(() => loadUserData());
             tg.MainButton.show();
         });
 
+        // ============================================================
+        // ОТПРАВКА ЗАПРОСОВ В БОТ
+        // ============================================================
+
         function sendToBot(action, data = {}) {
-            const payload = { action: action, ...data, timestamp: Date.now() };
-            tg.sendData(JSON.stringify(payload));
-            showToast('⏳ Отправка запроса...');
+            if (!tg.initDataUnsafe?.user) {
+                showToast('❌ Ошибка: авторизуйтесь в боте', 'error');
+                return;
+            }
+            
+            const payload = {
+                action: action,
+                ...data,
+                user_id: tg.initDataUnsafe.user.id,
+                timestamp: Date.now()
+            };
+            
+            try {
+                tg.sendData(JSON.stringify(payload));
+                showToast(`⏳ Отправка запроса: ${action}...`);
+            } catch (e) {
+                console.error('Send error:', e);
+                showToast('❌ Ошибка отправки', 'error');
+            }
         }
 
-        async function loadUserData() {
-            if (state.loading) return;
+        // ============================================================
+        // ЗАГРУЗКА ДАННЫХ
+        // ============================================================
+
+        function loadUserData() {
+            if (state.loading) {
+                showToast('⏳ Уже загружается...');
+                return;
+            }
+            
+            if (!tg.initDataUnsafe?.user) {
+                showToast('❌ Ошибка: авторизуйтесь в боте', 'error');
+                return;
+            }
+            
             state.loading = true;
+            lastSyncTime = Date.now();
             sendToBot('get_data');
-            state.loading = false;
         }
+
+        // ============================================================
+        // ОБРАБОТКА ДАННЫХ ОТ БОТА
+        // ============================================================
 
         tg.onEvent('data', (data) => {
             try {
                 const parsed = JSON.parse(data);
+                console.log('📥 Получены данные от бота:', parsed);
+                
                 if (parsed.action === 'update_data') {
+                    // Обновляем состояние
                     state.balance = parsed.balance || 0;
                     state.channels = parsed.channels || [];
                     state.auctions = parsed.auctions || [];
                     if (parsed.user) state.user = parsed.user;
+                    
+                    // Обновляем UI
                     document.getElementById('balance').textContent = state.balance;
                     updateUI();
-                    showToast('✅ Данные обновлены');
+                    
+                    state.loading = false;
+                    showToast(`✅ Данные обновлены! Баланс: ${state.balance} Stars`);
+                    
+                } else if (parsed.action === 'action_result') {
+                    // Обработка результатов действий
+                    if (parsed.success) {
+                        showToast(`✅ ${parsed.message || 'Действие выполнено'}`);
+                        // Перезагружаем данные после успешного действия
+                        setTimeout(loadUserData, 1000);
+                    } else {
+                        showToast(`❌ ${parsed.message || 'Ошибка выполнения'}`, 'error');
+                    }
+                } else {
+                    showToast(`ℹ️ ${parsed.message || 'Команда выполнена'}`);
                 }
             } catch (e) {
-                console.error('Error processing data:', e);
+                console.error('❌ Ошибка обработки данных:', e);
+                showToast('❌ Ошибка обработки данных от бота', 'error');
+                state.loading = false;
             }
         });
+
+        // ============================================================
+        // ОБНОВЛЕНИЕ UI
+        // ============================================================
 
         function updateUI() {
             const activeTab = document.querySelector('.tab-btn.active');
@@ -483,120 +569,264 @@
             }
         }
 
+        // ============================================================
+        // ОТОБРАЖЕНИЕ МАРКЕТА
+        // ============================================================
+
         function renderMarket() {
             const container = document.getElementById('market-list');
-            if (state.channels.length === 0) {
-                container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🛒</div><div class="empty-state-title">Нет товаров</div><div>На данный момент нет username на продаже</div></div>`;
+            const channels = state.channels.filter(c => c.is_auction === 0 || c.is_auction === false);
+            
+            if (channels.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🛒</div>
+                        <div class="empty-state-title">Нет товаров</div>
+                        <div>На данный момент нет username на продаже</div>
+                        <div style="margin-top:8px;font-size:12px;">Нажмите 🔄 для обновления</div>
+                    </div>
+                `;
                 return;
             }
+            
             let html = '';
-            state.channels.forEach(ch => {
+            channels.forEach(ch => {
                 html += `<div class="card" onclick="viewChannel(${ch.id}, 'fixed')">
-                    <div class="card-title">${ch.title}</div>
-                    <div class="card-subtitle">@${ch.username}</div>
-                    <div class="card-price">⭐ ${ch.price}</div>
-                    <div class="card-footer"><span class="card-username">Продавец: ${ch.seller_id}</span><span class="card-badge badge-fixed">Фикс</span></div>
+                    <div class="card-title">${ch.title || 'Unknown'}</div>
+                    <div class="card-subtitle">@${ch.username || ''}</div>
+                    <div class="card-price">⭐ ${ch.price || 0}</div>
+                    <div class="card-footer">
+                        <span class="card-username">Продавец: ${ch.seller_id || '—'}</span>
+                        <span class="card-badge badge-fixed">Фикс</span>
+                    </div>
                 </div>`;
             });
             container.innerHTML = html;
         }
 
+        // ============================================================
+        // ОТОБРАЖЕНИЕ АУКЦИОНОВ
+        // ============================================================
+
         function renderAuctions() {
             const container = document.getElementById('auction-list');
-            if (state.auctions.length === 0) {
-                container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔨</div><div class="empty-state-title">Нет аукционов</div><div>Активные аукционы отсутствуют</div></div>`;
+            const auctions = state.auctions.filter(c => c.is_auction === 1 || c.is_auction === true);
+            
+            if (auctions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔨</div>
+                        <div class="empty-state-title">Нет аукционов</div>
+                        <div>Активные аукционы отсутствуют</div>
+                        <div style="margin-top:8px;font-size:12px;">Нажмите 🔄 для обновления</div>
+                    </div>
+                `;
                 return;
             }
+            
             let html = '';
-            state.auctions.forEach(ch => {
-                const timeLeft = ch.end_time ? getTimeLeft(ch.end_time) : 'Не начат';
+            auctions.forEach(ch => {
+                const currentBid = ch.auction_current_bid || ch.price || 0;
+                const timeLeft = ch.auction_end_time ? getTimeLeft(ch.auction_end_time) : 'Не начат';
                 html += `<div class="card" onclick="viewChannel(${ch.id}, 'auction')">
-                    <div class="card-title">${ch.title}</div>
-                    <div class="card-subtitle">@${ch.username}</div>
-                    <div class="card-price">⭐ ${ch.current_bid || ch.price}</div>
-                    <div class="card-footer"><span class="card-username">⏰ ${timeLeft}</span><span class="card-badge badge-auction">Аукцион</span></div>
+                    <div class="card-title">${ch.title || 'Unknown'}</div>
+                    <div class="card-subtitle">@${ch.username || ''}</div>
+                    <div class="card-price">⭐ ${currentBid}</div>
+                    <div class="card-footer">
+                        <span class="card-username">⏰ ${timeLeft}</span>
+                        <span class="card-badge badge-auction">Аукцион</span>
+                    </div>
                 </div>`;
             });
             container.innerHTML = html;
         }
+
+        // ============================================================
+        // ОТОБРАЖЕНИЕ ПРОФИЛЯ
+        // ============================================================
 
         function renderProfile() {
             const container = document.getElementById('profile-content');
             const user = state.user || { id: 'Неизвестно', username: 'Гость' };
+            
+            const myLots = state.channels.filter(c => c.seller_id === user.id);
+            
             container.innerHTML = `
-                <div class="card"><div class="card-title">👤 Мой профиль</div>
-                <div class="card-subtitle">ID: ${user.id || '—'}</div>
-                <div class="card-subtitle">Username: ${user.username ? '@' + user.username : 'Не указан'}</div></div>
-                <div class="grid-2">
-                    <div class="profile-stat"><div class="profile-stat-number">${state.balance}</div><div class="profile-stat-label">⭐ Баланс</div></div>
-                    <div class="profile-stat"><div class="profile-stat-number">${state.channels.filter(c => c.seller_id === user.id).length}</div><div class="profile-stat-label">📤 Мои лоты</div></div>
-                    <div class="profile-stat"><div class="profile-stat-number">0</div><div class="profile-stat-label">🛒 Куплено</div></div>
-                    <div class="profile-stat"><div class="profile-stat-number">0</div><div class="profile-stat-label">💰 Продано</div></div>
+                <div class="card">
+                    <div class="card-title">👤 Мой профиль</div>
+                    <div class="card-subtitle">ID: ${user.id || '—'}</div>
+                    <div class="card-subtitle">Username: ${user.username ? '@' + user.username : 'Не указан'}</div>
                 </div>
-                <div style="margin-top:16px;"><button class="btn btn-primary" onclick="showWithdrawModal()">💳 Вывод Stars</button></div>
-                <div style="margin-top:8px;"><button class="btn btn-success" onclick="showTopupModal()">💎 Пополнить баланс</button></div>
+                <div class="grid-2">
+                    <div class="profile-stat">
+                        <div class="profile-stat-number">${state.balance}</div>
+                        <div class="profile-stat-label">⭐ Баланс</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-number">${myLots.length}</div>
+                        <div class="profile-stat-label">📤 Мои лоты</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-number">0</div>
+                        <div class="profile-stat-label">🛒 Куплено</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-number">0</div>
+                        <div class="profile-stat-label">💰 Продано</div>
+                    </div>
+                </div>
+                <div style="margin-top:16px;">
+                    <button class="btn btn-primary" onclick="showWithdrawModal()">💳 Вывод Stars</button>
+                </div>
+                <div style="margin-top:8px;">
+                    <button class="btn btn-success" onclick="showTopupModal()">💎 Пополнить баланс</button>
+                </div>
+                <div style="margin-top:8px;">
+                    <button class="btn btn-outline" onclick="loadUserData()">🔄 Обновить данные</button>
+                </div>
             `;
         }
+
+        // ============================================================
+        // ОТОБРАЖЕНИЕ ПРОДАЖИ
+        // ============================================================
 
         function renderSell() {
             const container = document.getElementById('sell-content');
             const user = state.user || { id: 0 };
             const myLots = state.channels.filter(c => c.seller_id === user.id);
+            
             container.innerHTML = `
-                <div class="card"><div class="card-title">📤 Продать username</div><div class="card-subtitle">Выберите способ продажи</div></div>
-                <button class="btn btn-primary" style="margin-bottom:8px;" onclick="showSellModal('fixed')">📢 Фиксированная цена</button>
-                <button class="btn btn-success" onclick="showSellModal('auction')">🔨 Аукцион</button>
+                <div class="card">
+                    <div class="card-title">📤 Продать username</div>
+                    <div class="card-subtitle">Выберите способ продажи</div>
+                </div>
+                <button class="btn btn-primary" style="margin-bottom:8px;" onclick="showSellModal('fixed')">
+                    📢 Фиксированная цена
+                </button>
+                <button class="btn btn-success" onclick="showSellModal('auction')">
+                    🔨 Аукцион
+                </button>
                 <div style="margin-top:20px;">
                     <div class="card">
                         <div class="card-title">📋 Мои лоты</div>
                         <div id="my-lots">
-                            ${myLots.length === 0 ? '<div class="empty-state"><div class="empty-state-title">Нет активных лотов</div></div>' :
-                            myLots.map(c => `
-                                <div class="list-item">
-                                    <div class="list-item-icon">📢</div>
-                                    <div class="list-item-content"><div class="list-item-title">${c.title}</div><div class="list-item-subtitle">@${c.username}</div></div>
-                                    <div class="list-item-right"><div class="list-item-price">⭐ ${c.price}</div>
-                                    <button class="btn btn-danger btn-sm" onclick="removeLot(${c.id})">✕</button></div>
-                                </div>
-                            `).join('')}
+                            ${myLots.length === 0 ? 
+                                '<div class="empty-state"><div class="empty-state-title">Нет активных лотов</div></div>' :
+                                myLots.map(c => `
+                                    <div class="list-item">
+                                        <div class="list-item-icon">📢</div>
+                                        <div class="list-item-content">
+                                            <div class="list-item-title">${c.title || 'Unknown'}</div>
+                                            <div class="list-item-subtitle">@${c.username || ''}</div>
+                                        </div>
+                                        <div class="list-item-right">
+                                            <div class="list-item-price">⭐ ${c.price || 0}</div>
+                                            <button class="btn btn-danger btn-sm" onclick="removeLot(${c.id})">✕</button>
+                                        </div>
+                                    </div>
+                                `).join('')
+                            }
                         </div>
                     </div>
                 </div>
+                <button class="btn btn-outline" style="margin-top:12px;" onclick="loadUserData()">🔄 Обновить</button>
             `;
         }
 
+        // ============================================================
+        // ПРОСМОТР КАНАЛА
+        // ============================================================
+
         function viewChannel(id, type) {
-            const channel = type === 'fixed' ? state.channels.find(c => c.id === id) : state.auctions.find(c => c.id === id);
-            if (!channel) { showToast('Канал не найден', 'error'); return; }
-            const isAuction = type === 'auction';
-            const price = isAuction ? (channel.current_bid || channel.price) : channel.price;
-            const title = isAuction ? '🔨 Аукцион' : '📢 Покупка';
-            let bodyHTML = `<div style="margin-bottom:12px;"><strong>${channel.title}</strong></div>
-                <div style="color:var(--text-secondary);margin-bottom:8px;">@${channel.username}</div>
-                <div style="font-size:24px;font-weight:700;color:var(--success);margin-bottom:16px;">⭐ ${price}</div>`;
-            if (isAuction) {
-                const timeLeft = channel.end_time ? getTimeLeft(channel.end_time) : 'Не начат';
-                bodyHTML += `<div style="color:var(--text-secondary);font-size:13px;">⏰ Осталось: ${timeLeft}</div>
-                    <div style="color:var(--text-secondary);font-size:13px;margin-top:4px;">👤 Лидирует: ${channel.bidder_id ? 'Есть ставка' : 'Нет ставок'}</div>`;
+            const channel = type === 'fixed' 
+                ? state.channels.find(c => c.id === id)
+                : state.auctions.find(c => c.id === id);
+                
+            if (!channel) {
+                showToast('❌ Канал не найден', 'error');
+                return;
             }
-            let footerHTML = `<button class="btn ${isAuction ? 'btn-success' : 'btn-primary'}" onclick="closeModal(); ${isAuction ? `placeBid(${id})` : `confirmBuy(${id})`}">
-                ${isAuction ? '💰 Сделать ставку' : '🛒 Купить'}</button>
-                <button class="btn btn-outline" onclick="closeModal()">Отмена</button>`;
+            
+            const isAuction = type === 'auction';
+            const price = isAuction ? (channel.auction_current_bid || channel.price || 0) : (channel.price || 0);
+            const title = isAuction ? '🔨 Аукцион' : '📢 Покупка';
+            
+            let bodyHTML = `
+                <div style="margin-bottom:12px;"><strong>${channel.title || 'Unknown'}</strong></div>
+                <div style="color:var(--text-secondary);margin-bottom:8px;">@${channel.username || ''}</div>
+                <div style="font-size:24px;font-weight:700;color:var(--success);margin-bottom:16px;">⭐ ${price}</div>
+            `;
+            
+            if (isAuction && channel.auction_end_time) {
+                const timeLeft = getTimeLeft(channel.auction_end_time);
+                bodyHTML += `
+                    <div style="color:var(--text-secondary);font-size:13px;">⏰ Осталось: ${timeLeft}</div>
+                    <div style="color:var(--text-secondary);font-size:13px;margin-top:4px;">
+                        👤 Лидирует: ${channel.auction_bidder_id ? 'ID ' + channel.auction_bidder_id : 'Нет ставок'}
+                    </div>
+                `;
+            }
+            
+            let footerHTML = `
+                <button class="btn ${isAuction ? 'btn-success' : 'btn-primary'}" 
+                    onclick="closeModal(); ${isAuction ? `placeBid(${id})` : `confirmBuy(${id})`}">
+                    ${isAuction ? '💰 Сделать ставку' : '🛒 Купить'}
+                </button>
+                <button class="btn btn-outline" onclick="closeModal()">Отмена</button>
+            `;
+            
             openModal(title, bodyHTML, footerHTML);
         }
 
-        function confirmBuy(id) { closeModal(); sendToBot('buy', { channel_id: id }); }
+        // ============================================================
+        // ПОКУПКА
+        // ============================================================
+
+        function confirmBuy(id) {
+            closeModal();
+            const channel = state.channels.find(c => c.id === id);
+            if (!channel) {
+                showToast('❌ Канал не найден', 'error');
+                return;
+            }
+            
+            if (state.balance < channel.price) {
+                showToast(`❌ Недостаточно средств. Нужно: ${channel.price} Stars`, 'error');
+                return;
+            }
+            
+            sendToBot('buy', { channel_id: id });
+        }
+
+        // ============================================================
+        // СТАВКА НА АУКЦИОНЕ
+        // ============================================================
 
         function placeBid(id) {
             closeModal();
             const auction = state.auctions.find(c => c.id === id);
-            if (!auction) return;
-            const minBid = (auction.current_bid || auction.price) + 1;
+            if (!auction) {
+                showToast('❌ Аукцион не найден', 'error');
+                return;
+            }
+            
+            const currentBid = auction.auction_current_bid || auction.price || 0;
+            const minBid = currentBid + 1;
+            
             openModal('💰 Сделать ставку', `
-                <div style="margin-bottom:12px;"><strong>${auction.title}</strong></div>
-                <div style="color:var(--text-secondary);margin-bottom:16px;">Текущая ставка: ⭐ ${auction.current_bid || auction.price}</div>
-                <div class="form-group"><label class="form-label">Ваша ставка (мин. ${minBid})</label>
-                <input class="form-input" type="number" id="bid-amount" value="${minBid}" min="${minBid}" step="1"></div>
+                <div style="margin-bottom:12px;"><strong>${auction.title || 'Unknown'}</strong></div>
+                <div style="color:var(--text-secondary);margin-bottom:16px;">
+                    Текущая ставка: ⭐ ${currentBid}
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ваша ставка (мин. ${minBid})</label>
+                    <input class="form-input" type="number" id="bid-amount" 
+                        value="${minBid}" min="${minBid}" step="1">
+                </div>
+                <div style="color:var(--text-secondary);font-size:13px;">
+                    Ваш баланс: ⭐ ${state.balance}
+                </div>
             `, `
                 <button class="btn btn-success" onclick="submitBid(${id})">✅ Подтвердить</button>
                 <button class="btn btn-outline" onclick="closeModal()">Отмена</button>
@@ -606,17 +836,39 @@
         function submitBid(id) {
             const input = document.getElementById('bid-amount');
             if (!input) return;
+            
             const amount = parseInt(input.value);
-            if (isNaN(amount) || amount <= 0) { showToast('Введите корректную сумму', 'error'); return; }
+            if (isNaN(amount) || amount <= 0) {
+                showToast('❌ Введите корректную сумму', 'error');
+                return;
+            }
+            
+            if (amount > state.balance) {
+                showToast(`❌ Недостаточно средств. Баланс: ${state.balance}`, 'error');
+                return;
+            }
+            
             closeModal();
             sendToBot('bid', { channel_id: id, amount: amount });
         }
 
+        // ============================================================
+        // ВЫВОД СРЕДСТВ
+        // ============================================================
+
         function showWithdrawModal() {
             openModal('💳 Вывод Stars', `
-                <div class="form-group"><label class="form-label">Сумма вывода (мин. 50 Stars)</label>
-                <input class="form-input" type="number" id="withdraw-amount" placeholder="Введите сумму" min="50" step="1"></div>
-                <div style="color:var(--text-secondary);font-size:13px;">Доступно: ⭐ ${state.balance}</div>
+                <div class="form-group">
+                    <label class="form-label">Сумма вывода (мин. 50 Stars)</label>
+                    <input class="form-input" type="number" id="withdraw-amount" 
+                        placeholder="Введите сумму" min="50" step="1">
+                </div>
+                <div style="color:var(--text-secondary);font-size:13px;">
+                    Доступно: ⭐ ${state.balance}
+                </div>
+                <div style="color:var(--text-secondary);font-size:12px;margin-top:8px;">
+                    ⚠️ После отправки заявки дождитесь подтверждения администратора
+                </div>
             `, `
                 <button class="btn btn-success" onclick="submitWithdraw()">✅ Вывести</button>
                 <button class="btn btn-outline" onclick="closeModal()">Отмена</button>
@@ -626,12 +878,24 @@
         function submitWithdraw() {
             const input = document.getElementById('withdraw-amount');
             if (!input) return;
+            
             const amount = parseInt(input.value);
-            if (isNaN(amount) || amount < 50) { showToast('Минимальная сумма вывода: 50 Stars', 'error'); return; }
-            if (amount > state.balance) { showToast('Недостаточно средств', 'error'); return; }
+            if (isNaN(amount) || amount < 50) {
+                showToast('❌ Минимальная сумма: 50 Stars', 'error');
+                return;
+            }
+            if (amount > state.balance) {
+                showToast(`❌ Недостаточно средств. Баланс: ${state.balance}`, 'error');
+                return;
+            }
+            
             closeModal();
             sendToBot('withdraw', { amount: amount });
         }
+
+        // ============================================================
+        // ПОПОЛНЕНИЕ
+        // ============================================================
 
         function showTopupModal() {
             openModal('💎 Пополнение баланса', `
@@ -641,34 +905,62 @@
                     <button class="btn btn-success btn-sm" onclick="quickTopup(100)">100 ⭐</button>
                     <button class="btn btn-success btn-sm" onclick="quickTopup(250)">250 ⭐</button>
                 </div>
-                <div class="form-group"><label class="form-label">Своя сумма</label>
-                <input class="form-input" type="number" id="topup-amount" placeholder="Введите сумму" min="1" step="1"></div>
-                <div style="color:var(--text-secondary);font-size:13px;">💳 Оплата через Telegram Stars</div>
+                <div class="form-group">
+                    <label class="form-label">Своя сумма</label>
+                    <input class="form-input" type="number" id="topup-amount" 
+                        placeholder="Введите сумму" min="1" step="1">
+                </div>
+                <div style="color:var(--text-secondary);font-size:13px;">
+                    💳 Оплата через Telegram Stars
+                </div>
             `, `
                 <button class="btn btn-primary" onclick="submitTopup()">💎 Пополнить</button>
                 <button class="btn btn-outline" onclick="closeModal()">Отмена</button>
             `);
         }
 
-        function quickTopup(amount) { closeModal(); sendToBot('topup', { amount: amount }); }
-
-        function submitTopup() {
-            const input = document.getElementById('topup-amount');
-            if (!input) return;
-            const amount = parseInt(input.value);
-            if (isNaN(amount) || amount <= 0) { showToast('Введите корректную сумму', 'error'); return; }
+        function quickTopup(amount) {
             closeModal();
             sendToBot('topup', { amount: amount });
         }
 
+        function submitTopup() {
+            const input = document.getElementById('topup-amount');
+            if (!input) return;
+            
+            const amount = parseInt(input.value);
+            if (isNaN(amount) || amount <= 0) {
+                showToast('❌ Введите корректную сумму', 'error');
+                return;
+            }
+            
+            closeModal();
+            sendToBot('topup', { amount: amount });
+        }
+
+        // ============================================================
+        // ПРОДАЖА
+        // ============================================================
+
         function showSellModal(type) {
             const title = type === 'fixed' ? '📢 Фиксированная цена' : '🔨 Аукцион';
+            
             openModal(title, `
-                <div class="form-group"><label class="form-label">Ссылка на канал</label>
-                <input class="form-input" id="sell-channel" placeholder="https://t.me/username"></div>
-                <div class="form-group"><label class="form-label">${type === 'fixed' ? 'Цена (Stars)' : 'Стартовая цена (Stars)'}</label>
-                <input class="form-input" id="sell-price" type="number" placeholder="Минимум 5 Stars" min="5" step="1"></div>
-                <div style="color:var(--text-secondary);font-size:13px;">⚠️ Бот должен быть администратором канала</div>
+                <div class="form-group">
+                    <label class="form-label">Ссылка на канал</label>
+                    <input class="form-input" id="sell-channel" placeholder="https://t.me/username">
+                    <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
+                        Пример: https://t.me/channel_name
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">${type === 'fixed' ? 'Цена (Stars)' : 'Стартовая цена (Stars)'}</label>
+                    <input class="form-input" id="sell-price" type="number" 
+                        placeholder="Минимум 5 Stars" min="5" step="1">
+                </div>
+                <div style="color:var(--text-secondary);font-size:13px;">
+                    ⚠️ Бот должен быть администратором канала
+                </div>
             `, `
                 <button class="btn btn-success" onclick="submitSell('${type}')">✅ Выставить</button>
                 <button class="btn btn-outline" onclick="closeModal()">Отмена</button>
@@ -678,19 +970,41 @@
         function submitSell(type) {
             const channelInput = document.getElementById('sell-channel');
             const priceInput = document.getElementById('sell-price');
+            
             if (!channelInput || !priceInput) return;
+            
             const channel = channelInput.value.trim();
             const price = parseInt(priceInput.value);
-            if (!channel) { showToast('Введите ссылку на канал', 'error'); return; }
-            if (isNaN(price) || price < 5) { showToast('Минимальная цена: 5 Stars', 'error'); return; }
+            
+            if (!channel) {
+                showToast('❌ Введите ссылку на канал', 'error');
+                return;
+            }
+            if (isNaN(price) || price < 5) {
+                showToast('❌ Минимальная цена: 5 Stars', 'error');
+                return;
+            }
+            
             closeModal();
-            sendToBot('sell', { channel: channel, price: price, type: type });
+            sendToBot('sell', { 
+                channel: channel, 
+                price: price, 
+                type: type 
+            });
         }
+
+        // ============================================================
+        // УДАЛЕНИЕ ЛОТА
+        // ============================================================
 
         function removeLot(id) {
             if (!confirm('Снять лот с продажи?')) return;
             sendToBot('remove_lot', { channel_id: id });
         }
+
+        // ============================================================
+        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+        // ============================================================
 
         function openModal(title, bodyHTML, footerHTML = '') {
             document.getElementById('modal-title').textContent = title;
@@ -699,13 +1013,16 @@
             document.getElementById('modal').classList.add('active');
         }
 
-        function closeModal() { document.getElementById('modal').classList.remove('active'); }
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
         document.getElementById('modal').addEventListener('click', (e) => {
             if (e.target === e.currentTarget) closeModal();
         });
 
         function getTimeLeft(timestamp) {
-            const diff = timestamp - Date.now();
+            const diff = timestamp * 1000 - Date.now();
             if (diff <= 0) return 'Завершен';
             const days = Math.floor(diff / 86400000);
             const hours = Math.floor((diff % 86400000) / 3600000);
@@ -729,6 +1046,8 @@
         }
 
         console.log('✅ Username Market App загружен!');
+        console.log('👤 Пользователь:', state.user);
+        console.log('🔄 Для синхронизации нажмите кнопку "Обновить"');
     </script>
 </body>
 </html>
