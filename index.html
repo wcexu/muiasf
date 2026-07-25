@@ -16,7 +16,7 @@ const state={data:null,page:'market',query:'',tab:'all'};
 const app=document.getElementById('app');
 function esc(x){return String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function toast(x){const t=document.getElementById('toast');t.textContent=x;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
-const API_URL = window.API_URL || 'https://YOUR-BACKEND-URL.onrender.com';
+const API_URL = 'hhttps://unpack-composed-reaction.ngrok-free.dev';
 async function api(path,opts={}){const r=await fetch(API_URL+path,{headers:{'Content-Type':'application/json','X-Telegram-Init-Data':tg?.initData||''},...opts});const j=await r.json();if(!r.ok)throw Error(j.error||'Ошибка');return j}
 async function load(){try{state.data=await api('/api/data');render()}catch(e){toast(e.message);app.innerHTML='<div class="empty">Не удалось загрузить данные.<br><br>Откройте приложение через кнопку в Telegram.</div>'}}
 function nav(){document.querySelectorAll('.nav button').forEach(b=>{b.classList.toggle('active',b.dataset.page===state.page);b.onclick=()=>{state.page=b.dataset.page;render()}})}
