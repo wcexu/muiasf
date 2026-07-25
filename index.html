@@ -408,9 +408,33 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        .debug-info {
+            background: rgba(255,0,0,0.1);
+            border: 1px solid rgba(255,0,0,0.3);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            font-size: 12px;
+            color: #ff6b6b;
+            display: none;
+        }
+        .debug-info.show {
+            display: block;
+        }
+        .debug-info pre {
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin: 0;
+            font-size: 11px;
+        }
     </style>
 </head>
 <body>
+
+    <div class="debug-info" id="debugInfo">
+        <strong>🐛 Отладка:</strong>
+        <pre id="debugLog">Ожидание...</pre>
+    </div>
 
     <div class="header">
         <div class="header-title">🎯 Маркет</div>
@@ -482,12 +506,34 @@
     <div class="toast-container" id="toast-container"></div>
 
     <script>
+        // ============================================================
+        // ОТЛАДОЧНЫЙ РЕЖИМ - ПОКАЗЫВАЕТ ВСЕ СОБЫТИЯ
+        // ============================================================
+        const DEBUG = true;
+        const debugLog = document.getElementById('debugLog');
+        const debugInfo = document.getElementById('debugInfo');
+        
+        function logDebug(msg) {
+            if (!DEBUG) return;
+            console.log('🐛', msg);
+            if (debugLog) {
+                debugLog.textContent += '\n' + new Date().toLocaleTimeString() + ': ' + msg;
+                debugInfo.classList.add('show');
+            }
+        }
+
+        // ============================================================
+        // ИНИЦИАЛИЗАЦИЯ TELEGRAM
+        // ============================================================
+        
         const tg = window.Telegram.WebApp;
         tg.expand();
         tg.ready();
+        
+        logDebug('Telegram WebApp инициализирован');
 
         // ============================================================
-        // СОСТОЯНИЕ - НЕТ ТЕСТОВЫХ ДАННЫХ!
+        // СОСТОЯНИЕ
         // ============================================================
         let state = {
             user: null,
@@ -499,31 +545,36 @@
         };
 
         let syncAttempts = 0;
-        const MAX_SYNC_ATTEMPTS = 5;
 
         // ============================================================
         // ИНИЦИАЛИЗАЦИЯ
         // ============================================================
 
         document.addEventListener('DOMContentLoaded', () => {
+            logDebug('DOM загружен');
+            
             const user = tg.initDataUnsafe?.user;
+            logDebug('Пользователь из Telegram: ' + JSON.stringify(user));
             
             if (!user) {
+                logDebug('❌ Пользователь НЕ НАЙДЕН! Открывайте через бота!');
                 showToast('⚠️ Авторизуйтесь в боте', 'error');
                 document.getElementById('balance').textContent = '❌';
                 return;
             }
             
             state.user = user;
-            console.log('👤 Пользователь:', user);
+            logDebug('✅ Пользователь найден: ID=' + user.id + ', username=' + user.username);
             
             // Настраиваем кнопку внизу
             tg.MainButton.text = '🔄 Обновить';
             tg.MainButton.onClick(() => forceSync());
             tg.MainButton.show();
+            logDebug('Кнопка "Обновить" настроена');
             
             // Первая загрузка через 500ms
             setTimeout(() => {
+                logDebug('Первая синхронизация...');
                 forceSync();
             }, 500);
         });
@@ -533,18 +584,23 @@
         // ============================================================
 
         function forceSync() {
+            logDebug('▶️ forceSync() вызвана');
+            
             if (state.loading) {
+                logDebug('⏳ Уже синхронизация...');
                 showToast('⏳ Уже синхронизация...');
                 return;
             }
             
             if (!state.user) {
+                logDebug('❌ Нет пользователя!');
                 showToast('❌ Нет данных пользователя', 'error');
                 return;
             }
             
             state.loading = true;
             syncAttempts++;
+            logDebug('🔄 Попытка синхронизации #' + syncAttempts);
             
             const syncBtn = document.getElementById('syncBtn');
             syncBtn.innerHTML = '<span class="loading-spinner"></span> Синхронизация...';
@@ -565,10 +621,13 @@
                 timestamp: Date.now()
             };
             
+            logDebug('📤 Отправка запроса: ' + JSON.stringify(payload));
+            
             try {
                 tg.sendData(JSON.stringify(payload));
-                console.log('📤 Отправлен запрос:', payload);
+                logDebug('✅ Запрос отправлен через tg.sendData()');
             } catch (e) {
+                logDebug('❌ Ошибка отправки: ' + e.message);
                 console.error('❌ Ошибка отправки:', e);
                 showToast('❌ Ошибка отправки запроса', 'error');
                 state.loading = false;
@@ -579,6 +638,7 @@
             // Таймаут на случай, если бот не ответит
             setTimeout(() => {
                 if (state.loading) {
+                    logDebug('⏰ Таймаут 10 секунд! Бот не отвечает.');
                     state.loading = false;
                     syncBtn.innerHTML = '🔄 Синхронизировать с ботом';
                     syncBtn.classList.remove('loading');
@@ -586,6 +646,7 @@
                     if (!state.dataReceived) {
                         showToast('⚠️ Бот не отвечает. Проверьте, запущен ли бот.', 'error');
                         document.getElementById('balance').textContent = '⚠️';
+                        logDebug('❌ Бот не ответил в течение 10 секунд');
                     }
                 }
             }, 10000);
@@ -596,9 +657,12 @@
         // ============================================================
 
         tg.onEvent('data', (data) => {
+            logDebug('📥 Получено событие "data"');
+            logDebug('📥 Данные: ' + data.substring(0, 200) + (data.length > 200 ? '...' : ''));
+            
             try {
                 const parsed = JSON.parse(data);
-                console.log('📥 Получен ответ от бота:', parsed);
+                logDebug('📥 Распарсено: action=' + parsed.action);
                 
                 state.loading = false;
                 state.dataReceived = true;
@@ -614,6 +678,10 @@
                     state.auctions = parsed.auctions || [];
                     if (parsed.user) state.user = parsed.user;
                     
+                    logDebug('✅ Данные обновлены: balance=' + state.balance + 
+                           ', channels=' + state.channels.length + 
+                           ', auctions=' + state.auctions.length);
+                    
                     // Обновляем баланс в шапке
                     document.getElementById('balance').textContent = state.balance;
                     
@@ -621,25 +689,22 @@
                     updateUI();
                     
                     showToast(`✅ Синхронизация успешна! Баланс: ${state.balance} Stars`);
-                    console.log('📊 Данные обновлены:', {
-                        balance: state.balance,
-                        channels: state.channels.length,
-                        auctions: state.auctions.length
-                    });
                     
                 } else if (parsed.action === 'action_result') {
+                    logDebug('ℹ️ Результат действия: ' + (parsed.success ? 'успех' : 'ошибка') + ' - ' + (parsed.message || ''));
                     if (parsed.success) {
                         showToast(`✅ ${parsed.message || 'Действие выполнено'}`);
-                        // Перезагружаем данные после действия
                         setTimeout(forceSync, 1500);
                     } else {
                         showToast(`❌ ${parsed.message || 'Ошибка выполнения'}`, 'error');
                     }
                 } else {
+                    logDebug('ℹ️ Неизвестный action: ' + parsed.action);
                     showToast(`ℹ️ ${parsed.message || 'Команда выполнена'}`);
                 }
                 
             } catch (e) {
+                logDebug('❌ Ошибка обработки ответа: ' + e.message);
                 console.error('❌ Ошибка обработки ответа:', e);
                 state.loading = false;
                 const syncBtn = document.getElementById('syncBtn');
@@ -654,7 +719,10 @@
         // ============================================================
 
         function sendToBot(action, data = {}) {
+            logDebug('📤 sendToBot(' + action + ')');
+            
             if (!state.user) {
+                logDebug('❌ Нет пользователя!');
                 showToast('❌ Нет данных пользователя', 'error');
                 return;
             }
@@ -666,18 +734,21 @@
                 timestamp: Date.now()
             };
             
+            logDebug('📤 Пейлоад: ' + JSON.stringify(payload));
+            
             try {
                 tg.sendData(JSON.stringify(payload));
-                console.log(`📤 Отправка ${action}:`, payload);
+                logDebug('✅ Отправлено');
                 showToast(`⏳ Отправка ${action}...`);
             } catch (e) {
+                logDebug('❌ Ошибка отправки: ' + e.message);
                 console.error('❌ Ошибка отправки:', e);
                 showToast('❌ Ошибка отправки', 'error');
             }
         }
 
         // ============================================================
-        // ОБНОВЛЕНИЕ UI
+        // ОСТАЛЬНЫЕ ФУНКЦИИ (те же, что были)
         // ============================================================
 
         function updateUI() {
@@ -701,10 +772,6 @@
                 case 'sell': renderSell(); break;
             }
         }
-
-        // ============================================================
-        // ОТОБРАЖЕНИЕ МАРКЕТА
-        // ============================================================
 
         function renderMarket() {
             const container = document.getElementById('market-list');
@@ -746,10 +813,6 @@
             });
             container.innerHTML = html;
         }
-
-        // ============================================================
-        // ОТОБРАЖЕНИЕ АУКЦИОНОВ
-        // ============================================================
 
         function renderAuctions() {
             const container = document.getElementById('auction-list');
@@ -793,10 +856,6 @@
             });
             container.innerHTML = html;
         }
-
-        // ============================================================
-        // ОТОБРАЖЕНИЕ ПРОФИЛЯ
-        // ============================================================
 
         function renderProfile() {
             const container = document.getElementById('profile-content');
@@ -847,10 +906,6 @@
                 </div>
             `;
         }
-
-        // ============================================================
-        // ОТОБРАЖЕНИЕ ПРОДАЖИ
-        // ============================================================
 
         function renderSell() {
             const container = document.getElementById('sell-content');
@@ -907,7 +962,7 @@
         }
 
         // ============================================================
-        // ВСЕ ДЕЙСТВИЯ (ПОКУПКА, СТАВКА, ВЫВОД, ПОПОЛНЕНИЕ, ПРОДАЖА)
+        // ВСЕ ДЕЙСТВИЯ
         // ============================================================
 
         function viewChannel(id, type) {
@@ -1187,6 +1242,9 @@
             }, 3000);
         }
 
+        logDebug('✅ Приложение загружено!');
+        logDebug('👤 Пользователь: ' + JSON.stringify(state.user));
+        logDebug('🔄 Нажмите кнопку "Синхронизировать" для загрузки данных');
         console.log('✅ Username Market App загружен!');
         console.log('👤 Пользователь:', state.user);
         console.log('🔄 Нажмите кнопку "Синхронизировать" для загрузки данных');
