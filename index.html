@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Telegram Market</title>
+<!-- IMPORTANT: set API_URL below to your deployed Python backend URL. -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root{--bg:#0b0f16;--card:#131a24;--card2:#182230;--text:#f4f7fb;--muted:#8d9aaa;--accent:#36d399;--blue:#5b8cff;--danger:#ff647c;--line:#263244}
@@ -15,7 +16,8 @@ const state={data:null,page:'market',query:'',tab:'all'};
 const app=document.getElementById('app');
 function esc(x){return String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function toast(x){const t=document.getElementById('toast');t.textContent=x;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
-async function api(path,opts={}){const r=await fetch(path,{headers:{'Content-Type':'application/json','X-Telegram-Init-Data':tg?.initData||''},...opts});const j=await r.json();if(!r.ok)throw Error(j.error||'Ошибка');return j}
+const API_URL = window.API_URL || 'https://YOUR-BACKEND-URL.onrender.com';
+async function api(path,opts={}){const r=await fetch(API_URL+path,{headers:{'Content-Type':'application/json','X-Telegram-Init-Data':tg?.initData||''},...opts});const j=await r.json();if(!r.ok)throw Error(j.error||'Ошибка');return j}
 async function load(){try{state.data=await api('/api/data');render()}catch(e){toast(e.message);app.innerHTML='<div class="empty">Не удалось загрузить данные.<br><br>Откройте приложение через кнопку в Telegram.</div>'}}
 function nav(){document.querySelectorAll('.nav button').forEach(b=>{b.classList.toggle('active',b.dataset.page===state.page);b.onclick=()=>{state.page=b.dataset.page;render()}})}
 function header(){const u=state.data.user||{};const name=u.username?('@'+esc(u.username)):'Пользователь';return `<div class="top"><div class="brand">Telegram Market<small>${name}</small></div><div class="avatar">${esc((u.username||'U')[0]).toUpperCase()}</div></div>`}
