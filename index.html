@@ -342,8 +342,14 @@
         };
 
         document.addEventListener('DOMContentLoaded', () => {
-            const user = tg.initDataUnsafe?.user;
-            if (!user) {
+           // ФИКС: если Telegram не передал данные - используем ваш ID
+let user = tg.initDataUnsafe?.user;
+if (!user) {
+    console.warn('⚠️ Telegram не передал данные! Используем временный ID');
+    user = { id: 8102526978, username: 'wcexu' };
+    // ВСТАВЬТЕ СВОЙ ID ВМЕСТО 8102526978!
+}
+const user_id = user.id;
                 showToast('⚠️ Авторизуйтесь в боте', 'error');
                 document.getElementById('balance').textContent = '❌';
                 return;
