@@ -62,6 +62,27 @@
             color: var(--success);
             font-size: 16px;
         }
+        .sync-btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #0f3460, #1a4a7a);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .sync-btn:active {
+            transform: scale(0.97);
+        }
+        .sync-btn.loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
         .tabs {
             display: flex;
             gap: 8px;
@@ -362,21 +383,6 @@
             color: var(--success);
             font-size: 14px;
         }
-        .sync-btn {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, var(--primary), #1a4a7a);
-            border: none;
-            border-radius: 12px;
-            color: white;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .sync-btn:active {
-            transform: scale(0.95);
-        }
         @media (max-width: 480px) {
             body { padding: 12px; padding-bottom: 70px; }
             .header-title { font-size: 18px; }
@@ -388,19 +394,35 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.8s ease-in-out infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
         <div class="header-title">🎯 Маркет</div>
-        <div class="header-balance" onclick="loadUserData()">
+        <div class="header-balance" onclick="forceSync()">
             ⭐ <span id="balance">0</span>
             <span style="font-size:10px;color:var(--text-secondary);">🔄</span>
         </div>
     </div>
 
-    <button class="sync-btn" onclick="loadUserData()">🔄 Синхронизировать с ботом</button>
+    <button class="sync-btn" id="syncBtn" onclick="forceSync()">
+        🔄 Синхронизировать с ботом
+    </button>
 
     <div class="tabs">
         <button class="tab-btn active" data-tab="market" onclick="switchTab('market')">🏪 Маркет</button>
@@ -410,10 +432,42 @@
     </div>
 
     <div id="content">
-        <div id="tab-market" class="tab-content"><div id="market-list"></div></div>
-        <div id="tab-auctions" class="tab-content" style="display:none;"><div id="auction-list"></div></div>
-        <div id="tab-profile" class="tab-content" style="display:none;"><div id="profile-content"></div></div>
-        <div id="tab-sell" class="tab-content" style="display:none;"><div id="sell-content"></div></div>
+        <div id="tab-market" class="tab-content">
+            <div id="market-list">
+                <div class="empty-state">
+                    <div class="empty-state-icon">⏳</div>
+                    <div class="empty-state-title">Загрузка...</div>
+                    <div>Ожидание данных от бота</div>
+                </div>
+            </div>
+        </div>
+        <div id="tab-auctions" class="tab-content" style="display:none;">
+            <div id="auction-list">
+                <div class="empty-state">
+                    <div class="empty-state-icon">⏳</div>
+                    <div class="empty-state-title">Загрузка...</div>
+                    <div>Ожидание данных от бота</div>
+                </div>
+            </div>
+        </div>
+        <div id="tab-profile" class="tab-content" style="display:none;">
+            <div id="profile-content">
+                <div class="empty-state">
+                    <div class="empty-state-icon">⏳</div>
+                    <div class="empty-state-title">Загрузка...</div>
+                    <div>Ожидание данных от бота</div>
+                </div>
+            </div>
+        </div>
+        <div id="tab-sell" class="tab-content" style="display:none;">
+            <div id="sell-content">
+                <div class="empty-state">
+                    <div class="empty-state-icon">⏳</div>
+                    <div class="empty-state-title">Загрузка...</div>
+                    <div>Ожидание данных от бота</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="modal-overlay" id="modal">
@@ -432,74 +486,109 @@
         tg.expand();
         tg.ready();
 
+        // ============================================================
+        // СОСТОЯНИЕ - НЕТ ТЕСТОВЫХ ДАННЫХ!
+        // ============================================================
         let state = {
             user: null,
             balance: 0,
             channels: [],
             auctions: [],
-            loading: false
+            loading: false,
+            dataReceived: false
         };
 
-        let lastSyncTime = 0;
+        let syncAttempts = 0;
+        const MAX_SYNC_ATTEMPTS = 5;
+
+        // ============================================================
+        // ИНИЦИАЛИЗАЦИЯ
+        // ============================================================
 
         document.addEventListener('DOMContentLoaded', () => {
             const user = tg.initDataUnsafe?.user;
-            if (user) {
-                state.user = user;
-                // Автоматическая загрузка данных через 1 секунду
-                setTimeout(loadUserData, 1000);
-            } else {
+            
+            if (!user) {
                 showToast('⚠️ Авторизуйтесь в боте', 'error');
-            }
-            tg.MainButton.text = '🔄 Обновить';
-            tg.MainButton.onClick(() => loadUserData());
-            tg.MainButton.show();
-        });
-
-        // ============================================================
-        // ОТПРАВКА ЗАПРОСОВ В БОТ
-        // ============================================================
-
-        function sendToBot(action, data = {}) {
-            if (!tg.initDataUnsafe?.user) {
-                showToast('❌ Ошибка: авторизуйтесь в боте', 'error');
+                document.getElementById('balance').textContent = '❌';
                 return;
             }
             
+            state.user = user;
+            console.log('👤 Пользователь:', user);
+            
+            // Настраиваем кнопку внизу
+            tg.MainButton.text = '🔄 Обновить';
+            tg.MainButton.onClick(() => forceSync());
+            tg.MainButton.show();
+            
+            // Первая загрузка через 500ms
+            setTimeout(() => {
+                forceSync();
+            }, 500);
+        });
+
+        // ============================================================
+        // ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ
+        // ============================================================
+
+        function forceSync() {
+            if (state.loading) {
+                showToast('⏳ Уже синхронизация...');
+                return;
+            }
+            
+            if (!state.user) {
+                showToast('❌ Нет данных пользователя', 'error');
+                return;
+            }
+            
+            state.loading = true;
+            syncAttempts++;
+            
+            const syncBtn = document.getElementById('syncBtn');
+            syncBtn.innerHTML = '<span class="loading-spinner"></span> Синхронизация...';
+            syncBtn.classList.add('loading');
+            
+            showToast(`🔄 Синхронизация (попытка ${syncAttempts})...`);
+            
+            // Очищаем старые данные
+            state.channels = [];
+            state.auctions = [];
+            state.balance = 0;
+            document.getElementById('balance').textContent = '⏳';
+            
+            // Отправляем запрос боту
             const payload = {
-                action: action,
-                ...data,
-                user_id: tg.initDataUnsafe.user.id,
+                action: 'get_data',
+                user_id: state.user.id,
                 timestamp: Date.now()
             };
             
             try {
                 tg.sendData(JSON.stringify(payload));
-                showToast(`⏳ Отправка запроса: ${action}...`);
+                console.log('📤 Отправлен запрос:', payload);
             } catch (e) {
-                console.error('Send error:', e);
-                showToast('❌ Ошибка отправки', 'error');
-            }
-        }
-
-        // ============================================================
-        // ЗАГРУЗКА ДАННЫХ
-        // ============================================================
-
-        function loadUserData() {
-            if (state.loading) {
-                showToast('⏳ Уже загружается...');
-                return;
+                console.error('❌ Ошибка отправки:', e);
+                showToast('❌ Ошибка отправки запроса', 'error');
+                state.loading = false;
+                syncBtn.innerHTML = '🔄 Синхронизировать с ботом';
+                syncBtn.classList.remove('loading');
             }
             
-            if (!tg.initDataUnsafe?.user) {
-                showToast('❌ Ошибка: авторизуйтесь в боте', 'error');
-                return;
-            }
-            
-            state.loading = true;
-            lastSyncTime = Date.now();
-            sendToBot('get_data');
+            // Таймаут на случай, если бот не ответит
+            setTimeout(() => {
+                if (state.loading) {
+                    state.loading = false;
+                    syncBtn.innerHTML = '🔄 Синхронизировать с ботом';
+                    syncBtn.classList.remove('loading');
+                    
+                    if (!state.dataReceived) {
+                        showToast('⚠️ Бот не отвечает. Проверьте, запущен ли бот.', 'error');
+                        document.getElementById('balance').textContent = '⚠️';
+                    }
+                }
+            }, 10000);
         }
 
         // ============================================================
@@ -509,40 +598,83 @@
         tg.onEvent('data', (data) => {
             try {
                 const parsed = JSON.parse(data);
-                console.log('📥 Получены данные от бота:', parsed);
+                console.log('📥 Получен ответ от бота:', parsed);
+                
+                state.loading = false;
+                state.dataReceived = true;
+                
+                const syncBtn = document.getElementById('syncBtn');
+                syncBtn.innerHTML = '🔄 Синхронизировать с ботом';
+                syncBtn.classList.remove('loading');
                 
                 if (parsed.action === 'update_data') {
-                    // Обновляем состояние
+                    // Обновляем состояние из реальных данных
                     state.balance = parsed.balance || 0;
                     state.channels = parsed.channels || [];
                     state.auctions = parsed.auctions || [];
                     if (parsed.user) state.user = parsed.user;
                     
-                    // Обновляем UI
+                    // Обновляем баланс в шапке
                     document.getElementById('balance').textContent = state.balance;
+                    
+                    // Обновляем все вкладки
                     updateUI();
                     
-                    state.loading = false;
-                    showToast(`✅ Данные обновлены! Баланс: ${state.balance} Stars`);
+                    showToast(`✅ Синхронизация успешна! Баланс: ${state.balance} Stars`);
+                    console.log('📊 Данные обновлены:', {
+                        balance: state.balance,
+                        channels: state.channels.length,
+                        auctions: state.auctions.length
+                    });
                     
                 } else if (parsed.action === 'action_result') {
-                    // Обработка результатов действий
                     if (parsed.success) {
                         showToast(`✅ ${parsed.message || 'Действие выполнено'}`);
-                        // Перезагружаем данные после успешного действия
-                        setTimeout(loadUserData, 1000);
+                        // Перезагружаем данные после действия
+                        setTimeout(forceSync, 1500);
                     } else {
                         showToast(`❌ ${parsed.message || 'Ошибка выполнения'}`, 'error');
                     }
                 } else {
                     showToast(`ℹ️ ${parsed.message || 'Команда выполнена'}`);
                 }
+                
             } catch (e) {
-                console.error('❌ Ошибка обработки данных:', e);
-                showToast('❌ Ошибка обработки данных от бота', 'error');
+                console.error('❌ Ошибка обработки ответа:', e);
                 state.loading = false;
+                const syncBtn = document.getElementById('syncBtn');
+                syncBtn.innerHTML = '🔄 Синхронизировать с ботом';
+                syncBtn.classList.remove('loading');
+                showToast('❌ Ошибка обработки данных от бота', 'error');
             }
         });
+
+        // ============================================================
+        // ОТПРАВКА ЗАПРОСОВ В БОТ
+        // ============================================================
+
+        function sendToBot(action, data = {}) {
+            if (!state.user) {
+                showToast('❌ Нет данных пользователя', 'error');
+                return;
+            }
+            
+            const payload = {
+                action: action,
+                user_id: state.user.id,
+                ...data,
+                timestamp: Date.now()
+            };
+            
+            try {
+                tg.sendData(JSON.stringify(payload));
+                console.log(`📤 Отправка ${action}:`, payload);
+                showToast(`⏳ Отправка ${action}...`);
+            } catch (e) {
+                console.error('❌ Ошибка отправки:', e);
+                showToast('❌ Ошибка отправки', 'error');
+            }
+        }
 
         // ============================================================
         // ОБНОВЛЕНИЕ UI
@@ -561,6 +693,7 @@
             document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
             const target = document.getElementById(`tab-${tabName}`);
             if (target) target.style.display = 'block';
+            
             switch(tabName) {
                 case 'market': renderMarket(); break;
                 case 'auctions': renderAuctions(); break;
@@ -577,13 +710,23 @@
             const container = document.getElementById('market-list');
             const channels = state.channels.filter(c => c.is_auction === 0 || c.is_auction === false);
             
+            if (!state.dataReceived) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⏳</div>
+                        <div class="empty-state-title">Ожидание данных...</div>
+                        <div>Нажмите "Синхронизировать"</div>
+                    </div>
+                `;
+                return;
+            }
+            
             if (channels.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">🛒</div>
                         <div class="empty-state-title">Нет товаров</div>
                         <div>На данный момент нет username на продаже</div>
-                        <div style="margin-top:8px;font-size:12px;">Нажмите 🔄 для обновления</div>
                     </div>
                 `;
                 return;
@@ -612,13 +755,23 @@
             const container = document.getElementById('auction-list');
             const auctions = state.auctions.filter(c => c.is_auction === 1 || c.is_auction === true);
             
+            if (!state.dataReceived) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⏳</div>
+                        <div class="empty-state-title">Ожидание данных...</div>
+                        <div>Нажмите "Синхронизировать"</div>
+                    </div>
+                `;
+                return;
+            }
+            
             if (auctions.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">🔨</div>
                         <div class="empty-state-title">Нет аукционов</div>
                         <div>Активные аукционы отсутствуют</div>
-                        <div style="margin-top:8px;font-size:12px;">Нажмите 🔄 для обновления</div>
                     </div>
                 `;
                 return;
@@ -647,8 +800,19 @@
 
         function renderProfile() {
             const container = document.getElementById('profile-content');
-            const user = state.user || { id: 'Неизвестно', username: 'Гость' };
             
+            if (!state.dataReceived) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⏳</div>
+                        <div class="empty-state-title">Ожидание данных...</div>
+                        <div>Нажмите "Синхронизировать"</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            const user = state.user || { id: 'Неизвестно', username: 'Гость' };
             const myLots = state.channels.filter(c => c.seller_id === user.id);
             
             container.innerHTML = `
@@ -681,9 +845,6 @@
                 <div style="margin-top:8px;">
                     <button class="btn btn-success" onclick="showTopupModal()">💎 Пополнить баланс</button>
                 </div>
-                <div style="margin-top:8px;">
-                    <button class="btn btn-outline" onclick="loadUserData()">🔄 Обновить данные</button>
-                </div>
             `;
         }
 
@@ -693,6 +854,18 @@
 
         function renderSell() {
             const container = document.getElementById('sell-content');
+            
+            if (!state.dataReceived) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⏳</div>
+                        <div class="empty-state-title">Ожидание данных...</div>
+                        <div>Нажмите "Синхронизировать"</div>
+                    </div>
+                `;
+                return;
+            }
+            
             const user = state.user || { id: 0 };
             const myLots = state.channels.filter(c => c.seller_id === user.id);
             
@@ -730,12 +903,11 @@
                         </div>
                     </div>
                 </div>
-                <button class="btn btn-outline" style="margin-top:12px;" onclick="loadUserData()">🔄 Обновить</button>
             `;
         }
 
         // ============================================================
-        // ПРОСМОТР КАНАЛА
+        // ВСЕ ДЕЙСТВИЯ (ПОКУПКА, СТАВКА, ВЫВОД, ПОПОЛНЕНИЕ, ПРОДАЖА)
         // ============================================================
 
         function viewChannel(id, type) {
@@ -779,10 +951,6 @@
             openModal(title, bodyHTML, footerHTML);
         }
 
-        // ============================================================
-        // ПОКУПКА
-        // ============================================================
-
         function confirmBuy(id) {
             closeModal();
             const channel = state.channels.find(c => c.id === id);
@@ -798,10 +966,6 @@
             
             sendToBot('buy', { channel_id: id });
         }
-
-        // ============================================================
-        // СТАВКА НА АУКЦИОНЕ
-        // ============================================================
 
         function placeBid(id) {
             closeModal();
@@ -852,10 +1016,6 @@
             sendToBot('bid', { channel_id: id, amount: amount });
         }
 
-        // ============================================================
-        // ВЫВОД СРЕДСТВ
-        // ============================================================
-
         function showWithdrawModal() {
             openModal('💳 Вывод Stars', `
                 <div class="form-group">
@@ -865,9 +1025,6 @@
                 </div>
                 <div style="color:var(--text-secondary);font-size:13px;">
                     Доступно: ⭐ ${state.balance}
-                </div>
-                <div style="color:var(--text-secondary);font-size:12px;margin-top:8px;">
-                    ⚠️ После отправки заявки дождитесь подтверждения администратора
                 </div>
             `, `
                 <button class="btn btn-success" onclick="submitWithdraw()">✅ Вывести</button>
@@ -892,10 +1049,6 @@
             closeModal();
             sendToBot('withdraw', { amount: amount });
         }
-
-        // ============================================================
-        // ПОПОЛНЕНИЕ
-        // ============================================================
 
         function showTopupModal() {
             openModal('💎 Пополнение баланса', `
@@ -938,10 +1091,6 @@
             sendToBot('topup', { amount: amount });
         }
 
-        // ============================================================
-        // ПРОДАЖА
-        // ============================================================
-
         function showSellModal(type) {
             const title = type === 'fixed' ? '📢 Фиксированная цена' : '🔨 Аукцион';
             
@@ -949,9 +1098,6 @@
                 <div class="form-group">
                     <label class="form-label">Ссылка на канал</label>
                     <input class="form-input" id="sell-channel" placeholder="https://t.me/username">
-                    <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
-                        Пример: https://t.me/channel_name
-                    </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">${type === 'fixed' ? 'Цена (Stars)' : 'Стартовая цена (Stars)'}</label>
@@ -992,10 +1138,6 @@
                 type: type 
             });
         }
-
-        // ============================================================
-        // УДАЛЕНИЕ ЛОТА
-        // ============================================================
 
         function removeLot(id) {
             if (!confirm('Снять лот с продажи?')) return;
@@ -1047,7 +1189,7 @@
 
         console.log('✅ Username Market App загружен!');
         console.log('👤 Пользователь:', state.user);
-        console.log('🔄 Для синхронизации нажмите кнопку "Обновить"');
+        console.log('🔄 Нажмите кнопку "Синхронизировать" для загрузки данных');
     </script>
 </body>
 </html>
